@@ -1,0 +1,26 @@
+{
+  "name": "chatquee",
+  "version": "1.0.0",
+  "description": "Chat App using nodejs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Leon24k/ChatQuee.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Leon24k/ChatQuee/issues"
+  },
+  "homepage": "https://github.com/Leon24k/ChatQuee#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  }
+}
