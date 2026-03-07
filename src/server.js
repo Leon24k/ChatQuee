@@ -10,7 +10,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // handle incoming socket connections
 io.on('connection', (socket) => {
@@ -20,14 +20,26 @@ io.on('connection', (socket) => {
     'Halo! Saya ChatQuee Bot. Ada yang bisa saya bantu? 👋\n(Hello! I\'m ChatQuee Bot. How can I help you?)'
   );
 
+  let lastMessageTime = 0;
+
   socket.on('user message', (msg) => {
+    const now = Date.now();
+    if (now - lastMessageTime < 1000) {
+      // Rate limit: 1 message per second
+      return socket.emit('bot message', 'Terlalu cepat! Tunggu sebentar sebelum mengirim pesan lagi. ⏳');
+    }
+    lastMessageTime = now;
+
     if (!isValidUserMessage(msg)) {
       // ignore invalid payloads
       return;
     }
     const reply = getBotReply(msg);
     setTimeout(() => {
-      socket.emit('bot message', reply);
+      // Ensure socket is still connected to avoid memory leaks or useless emits
+      if (socket.connected) {
+        socket.emit('bot message', reply);
+      }
     }, RESPONSE_DELAY_MS);
   });
 

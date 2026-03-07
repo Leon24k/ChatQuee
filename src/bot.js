@@ -43,7 +43,8 @@ function getBotReply(message) {
   }
 
   for (const [key, response] of Object.entries(botResponses)) {
-    if (lower.includes(key)) {
+    const regex = new RegExp(`\\b${key}\\b`, 'i');
+    if (regex.test(lower)) {
       return response;
     }
   }

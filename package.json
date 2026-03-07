@@ -2,9 +2,9 @@
   "name": "chatquee",
   "version": "1.0.0",
   "description": "Chat App using nodejs",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node src/server.js",
     "test": "jest --runInBand",
     "lint": "echo \"No linter configured\""
   },

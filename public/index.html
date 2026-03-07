@@ -255,22 +255,9 @@
       .dev-section { padding: 60px 15px; }
       .dev-section h2 { font-size: 2.5rem; }
     }
-    
-    .bg-grid {
-      position: fixed;
-      top: -50%; left: -50%;
-      width: 200%; height: 200%;
-      background-image: 
-        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-      background-size: 60px 60px;
-      z-index: -2;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
-  <div class="bg-grid"></div>
   <div class="cursor-glow"></div>
 
   <section class="hero">
@@ -356,62 +343,15 @@
   <script>
     gsap.registerPlugin(ScrollTrigger);
 
-    // 1. Sleek Cursor Glow Effect & Grid Parallax
+    // 1. Sleek Cursor Glow Effect
     const cursorGlow = document.querySelector('.cursor-glow');
-    const bgGrid = document.querySelector('.bg-grid');
     document.addEventListener('mousemove', (e) => {
-      // Glow Follower
       gsap.to(cursorGlow, {
         x: e.clientX,
         y: e.clientY,
         duration: 0.6,
         ease: "power2.out",
         overwrite: "auto"
-      });
-      
-      // Background Grid Parallax Interaction
-      const xOffset = (e.clientX / window.innerWidth - 0.5) * 60;
-      const yOffset = (e.clientY / window.innerHeight - 0.5) * 60;
-      gsap.to(bgGrid, {
-        x: -xOffset,
-        y: -yOffset,
-        duration: 1.5,
-        ease: "power1.out"
-      });
-    });
-
-    // Interactive 3D Tilt for cards
-    const tiltElements = document.querySelectorAll('.chat-container, .terminal, .visual-glass, .hero h1');
-    tiltElements.forEach(el => {
-      el.addEventListener('mousemove', (e) => {
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        
-        // Calculate rotation based on mouse position
-        const rotateX = ((y - centerY) / centerY) * -10; // Max 10 degrees
-        const rotateY = ((x - centerX) / centerX) * 10;
-        
-        gsap.to(el, {
-          rotationX: rotateX,
-          rotationY: rotateY,
-          transformPerspective: 1200,
-          scale: 1.02,
-          duration: 0.5,
-          ease: "power2.out"
-        });
-      });
-      
-      el.addEventListener('mouseleave', () => {
-        gsap.to(el, {
-          rotationX: 0,
-          rotationY: 0,
-          scale: 1,
-          duration: 0.8,
-          ease: "power2.out"
-        });
       });
     });
 

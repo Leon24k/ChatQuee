@@ -1,4 +1,4 @@
-const { getBotReply, isValidUserMessage } = require('../bot');
+const { getBotReply, isValidUserMessage } = require('../src/bot');
 
 describe('bot logic', () => {
   test('responds to greeting keywords', () => {
