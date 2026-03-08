@@ -242,6 +242,16 @@
     #sendBtn:hover { transform: scale(1.08); background: #e4e4e7; }
     #sendBtn:disabled { opacity: 0.4; pointer-events: none; }
 
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+    .status-dot.online       { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.7); }
+    .status-dot.offline      { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.7); }
+    .status-dot.reconnecting { background: #eab308; box-shadow: 0 0 6px rgba(234,179,8,0.7); animation: pulseDot 1s infinite; }
+    @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
@@ -318,7 +328,10 @@
         <div class="bot-avatar">CQ</div>
         <div class="bot-info">
           <h3 style="font-size: 1.2rem; margin:0; color:#fff;">ChatQuee AI</h3>
-          <span style="font-size: 0.85rem; color: #a1a1aa; font-weight: normal;">Status: Fully Operational</span>
+          <div style="display:flex; align-items:center; gap:7px; margin-top:4px;">
+            <div class="status-dot offline" id="statusDot"></div>
+            <span id="statusText" style="font-size: 0.85rem; color: #ef4444; font-weight: normal;">Connecting...</span>
+          </div>
         </div>
       </div>
 
@@ -415,6 +428,22 @@
 
     // --- Socket.IO Application Logic ---
     const socket = io();
+
+    const statusDot  = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    function setStatus(state) {
+      statusDot.className = `status-dot ${state}`;
+      const labels = { online: 'Fully Operational', offline: 'Disconnected', reconnecting: 'Reconnecting...' };
+      const colors = { online: '#22c55e', offline: '#ef4444', reconnecting: '#eab308' };
+      statusText.textContent = labels[state];
+      statusText.style.color = colors[state];
+    }
+
+    socket.on('connect',           () => setStatus('online'));
+    socket.on('disconnect',        () => setStatus('offline'));
+    socket.on('reconnect_attempt', () => setStatus('reconnecting'));
+    socket.on('reconnect',         () => setStatus('online'));
     const messagesEl = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
