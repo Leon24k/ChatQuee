@@ -212,10 +212,14 @@
       max-width: 82%; padding: 14px 18px; border-radius: 20px;
       font-size: 1rem; line-height: 1.5;
       animation: msgPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+      display: flex; flex-direction: column; gap: 6px;
     }
     @keyframes msgPop { from { opacity: 0; transform: scale(0.9) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-    .message.bot { background: rgba(255,255,255,0.07); border-bottom-left-radius: 6px; align-self: flex-start; color: #e4e4e7; }
+    .message.bot  { background: rgba(255,255,255,0.07); border-bottom-left-radius: 6px; align-self: flex-start; color: #e4e4e7; }
     .message.user { background: linear-gradient(135deg, var(--accent1), var(--accent2)); border-bottom-right-radius: 6px; align-self: flex-end; color: #fff; font-weight: 500; }
+    .msg-time { font-size: 0.7rem; opacity: 0.5; line-height: 1; }
+    .message.bot  .msg-time { align-self: flex-start; }
+    .message.user .msg-time { align-self: flex-end; }
     .typing span { display: inline-block; width: 6px; height: 6px; background: #a1a1aa; border-radius: 50%; margin: 0 3px; animation: bounce 1s infinite alternate; }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
@@ -453,7 +457,16 @@
     function appendMessage(text, type) {
       const div = document.createElement('div');
       div.classList.add('message', type);
-      div.textContent = text;
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = text;           // safe – no innerHTML, no XSS
+
+      const timeSpan = document.createElement('span');
+      timeSpan.classList.add('msg-time');
+      timeSpan.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      div.appendChild(textSpan);
+      div.appendChild(timeSpan);
       messagesEl.appendChild(div);
       scrollToBottom();
     }
