@@ -435,22 +435,34 @@
 
     const statusDot  = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
+    const messagesEl = document.getElementById('messages');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    let connectionState = 'offline';
 
     function setStatus(state) {
+      connectionState = state;
       statusDot.className = `status-dot ${state}`;
       const labels = { online: 'Fully Operational', offline: 'Disconnected', reconnecting: 'Reconnecting...' };
       const colors = { online: '#22c55e', offline: '#ef4444', reconnecting: '#eab308' };
       statusText.textContent = labels[state];
       statusText.style.color = colors[state];
+
+      const disabled = state !== 'online';
+      sendBtn.disabled = disabled;
+      input.disabled = disabled;
+      input.placeholder = disabled
+        ? (state === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Waiting for connection...')
+        : 'Initiate connection...';
     }
+
+    setStatus('reconnecting');
 
     socket.on('connect',           () => setStatus('online'));
     socket.on('disconnect',        () => setStatus('offline'));
     socket.on('reconnect_attempt', () => setStatus('reconnecting'));
     socket.on('reconnect',         () => setStatus('online'));
-    const messagesEl = document.getElementById('messages');
-    const input = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
 
     function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
@@ -492,13 +504,18 @@
 
     function sendMessage() {
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || connectionState !== 'online') return;
       appendMessage(text, 'user');
       input.value = '';
       sendBtn.disabled = true;
       showTyping();
       socket.emit('user message', text);
-      setTimeout(() => { sendBtn.disabled = false; input.focus(); }, 500);
+      setTimeout(() => {
+        if (connectionState === 'online') {
+          sendBtn.disabled = false;
+          input.focus();
+        }
+      }, 500);
     }
 
     sendBtn.addEventListener('click', sendMessage);
