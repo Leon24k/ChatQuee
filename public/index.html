@@ -194,7 +194,24 @@
     .chat-header {
       background: rgba(255,255,255,0.02);
       padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.05);
-      display: flex; align-items: center; gap: 18px;
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    }
+    .chat-header-left { display: flex; align-items: center; gap: 18px; }
+    .chat-actions { display: flex; align-items: center; gap: 10px; }
+    .clear-history-btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #e4e4e7;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+    .clear-history-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.2);
     }
     .bot-avatar {
       width: 50px; height: 50px; border-radius: 50%;
@@ -329,13 +346,18 @@
     <h2>Try it <span class="gradient-text">now.</span></h2>
     <div class="chat-container">
       <div class="chat-header">
-        <div class="bot-avatar">CQ</div>
-        <div class="bot-info">
-          <h3 style="font-size: 1.2rem; margin:0; color:#fff;">ChatQuee AI</h3>
-          <div style="display:flex; align-items:center; gap:7px; margin-top:4px;">
-            <div class="status-dot offline" id="statusDot"></div>
-            <span id="statusText" style="font-size: 0.85rem; color: #ef4444; font-weight: normal;">Connecting...</span>
+        <div class="chat-header-left">
+          <div class="bot-avatar">CQ</div>
+          <div class="bot-info">
+            <h3 style="font-size: 1.2rem; margin:0; color:#fff;">ChatQuee AI</h3>
+            <div style="display:flex; align-items:center; gap:7px; margin-top:4px;">
+              <div class="status-dot offline" id="statusDot"></div>
+              <span id="statusText" style="font-size: 0.85rem; color: #ef4444; font-weight: normal;">Connecting...</span>
+            </div>
           </div>
+        </div>
+        <div class="chat-actions">
+          <button class="clear-history-btn" id="clearHistoryBtn" type="button">Clear chat</button>
         </div>
       </div>
 
@@ -438,8 +460,72 @@
     const messagesEl = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    const CHAT_HISTORY_KEY = 'chatquee.chatHistory';
+    const WELCOME_MESSAGE = 'Halo! Saya ChatQuee Bot. Ada yang bisa saya bantu? 👋\n(Hello! I\'m ChatQuee Bot. How can I help you?)';
 
     let connectionState = 'offline';
+    let chatHistory = loadChatHistory();
+    let suppressNextWelcome = chatHistory.length > 0;
+
+    function loadChatHistory() {
+      try {
+        const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function saveChatHistory() {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
+    }
+
+    function getMessageTime(time) {
+      return time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderMessage(text, type, time, persist = false) {
+      const div = document.createElement('div');
+      div.classList.add('message', type);
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = text;
+
+      const timeSpan = document.createElement('span');
+      timeSpan.classList.add('msg-time');
+      timeSpan.textContent = getMessageTime(time);
+
+      div.appendChild(textSpan);
+      div.appendChild(timeSpan);
+      messagesEl.appendChild(div);
+
+      if (persist) {
+        chatHistory.push({ text, type, time: timeSpan.textContent });
+        saveChatHistory();
+      }
+
+      scrollToBottom();
+    }
+
+    function restoreChatHistory() {
+      messagesEl.innerHTML = '';
+      chatHistory.forEach((message) => renderMessage(message.text, message.type, message.time));
+      scrollToBottom();
+    }
+
+    function clearChatHistory() {
+      chatHistory = [];
+      suppressNextWelcome = false;
+      saveChatHistory();
+      messagesEl.innerHTML = '';
+      renderMessage(WELCOME_MESSAGE, 'bot', null, true);
+      if (connectionState === 'online') {
+        input.focus();
+      }
+    }
 
     function setStatus(state) {
       connectionState = state;
@@ -459,6 +545,10 @@
 
     setStatus('reconnecting');
 
+    if (chatHistory.length > 0) {
+      restoreChatHistory();
+    }
+
     socket.on('connect',           () => setStatus('online'));
     socket.on('disconnect',        () => setStatus('offline'));
     socket.on('reconnect_attempt', () => setStatus('reconnecting'));
@@ -467,20 +557,7 @@
     function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
     function appendMessage(text, type) {
-      const div = document.createElement('div');
-      div.classList.add('message', type);
-
-      const textSpan = document.createElement('span');
-      textSpan.textContent = text;           // safe – no innerHTML, no XSS
-
-      const timeSpan = document.createElement('span');
-      timeSpan.classList.add('msg-time');
-      timeSpan.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-      div.appendChild(textSpan);
-      div.appendChild(timeSpan);
-      messagesEl.appendChild(div);
-      scrollToBottom();
+      renderMessage(text, type, null, true);
     }
 
     function showTyping() {
@@ -499,6 +576,11 @@
 
     socket.on('bot message', (msg) => {
       removeTyping();
+      if (suppressNextWelcome && msg === WELCOME_MESSAGE) {
+        suppressNextWelcome = false;
+        return;
+      }
+      suppressNextWelcome = false;
       appendMessage(msg, 'bot');
     });
 
@@ -519,6 +601,7 @@
     }
 
     sendBtn.addEventListener('click', sendMessage);
+    clearHistoryBtn.addEventListener('click', clearChatHistory);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
