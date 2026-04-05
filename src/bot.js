@@ -24,11 +24,17 @@ const botResponses = {
 
 // determines whether a user-supplied message is acceptable
 function isValidUserMessage(msg) {
-  if (typeof msg !== 'string') return false;
+  if (typeof msg !== 'string') {
+    return false;
+  }
   const trimmed = msg.trim();
-  if (trimmed.length === 0) return false;
+  if (trimmed.length === 0) {
+    return false;
+  }
   // arbitrary length cap to avoid abusing the service
-  if (trimmed.length > 1000) return false;
+  if (trimmed.length > 1000) {
+    return false;
+  }
   return true;
 }
 
