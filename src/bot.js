@@ -22,6 +22,18 @@ const botResponses = {
   joke: 'Kenapa programmer suka minum kopi? Karena mereka tidak suka Java yang dingin! ☕😄\n(Why do programmers prefer dark mode? Because light attracts bugs! 🐛)',
 };
 
+const helpMessage = [
+  'ChatQuee Bot bisa membantu dengan topik berikut:',
+  '- Salam: halo, hello, hi',
+  '- Nama bot: nama, name',
+  '- Waktu: waktu, time, jam',
+  '- Cuaca: cuaca, weather',
+  '- Sopan santun: terima kasih, thank you, thanks',
+  '- Percakapan: apa kabar, how are you, bye, sampai jumpa',
+  '- Hiburan: joke',
+  'Kamu juga bisa mengetik /help atau !help kapan saja untuk melihat daftar ini lagi.',
+].join('\n');
+
 // determines whether a user-supplied message is acceptable
 function isValidUserMessage(msg) {
   if (typeof msg !== 'string') {
@@ -42,6 +54,10 @@ function isValidUserMessage(msg) {
 function getBotReply(message) {
   const lower = message.toLowerCase().trim();
 
+  if (lower === '/help' || lower === '!help' || lower === 'help') {
+    return helpMessage;
+  }
+
   if (lower.includes('waktu') || lower.includes('time') || lower.includes('jam')) {
     const now = new Date();
     return `Sekarang pukul ${now.toLocaleTimeString('id-ID')}.
@@ -60,6 +76,7 @@ function getBotReply(message) {
 
 module.exports = {
   botResponses,
+  helpMessage,
   isValidUserMessage,
   getBotReply,
 };

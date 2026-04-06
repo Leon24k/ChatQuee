@@ -1,4 +1,4 @@
-const { getBotReply, isValidUserMessage } = require('../src/bot');
+const { getBotReply, helpMessage, isValidUserMessage } = require('../src/bot');
 
 describe('bot logic', () => {
   test('responds to greeting keywords', () => {
@@ -27,6 +27,12 @@ describe('bot logic', () => {
     // 'hi' is a keyword but 'Khidmat' should NOT trigger it (word boundary guard)
     const reply = getBotReply('Khidmat');
     expect(reply).toContain('Maaf, saya belum mengerti');
+  });
+
+  test('returns help text for /help and !help commands', () => {
+    expect(getBotReply('/help')).toBe(helpMessage);
+    expect(getBotReply('!help')).toBe(helpMessage);
+    expect(getBotReply('help')).toBe(helpMessage);
   });
 
   test('getBotReply returns a non-empty string for any input', () => {
