@@ -357,6 +357,7 @@
           </div>
         </div>
         <div class="chat-actions">
+          <button class="clear-history-btn" id="copyHistoryBtn" type="button">Copy chat</button>
           <button class="clear-history-btn" id="clearHistoryBtn" type="button">Clear chat</button>
         </div>
       </div>
@@ -367,7 +368,7 @@
         <input
           type="text"
           id="messageInput"
-          placeholder="Initiate connection..."
+          placeholder="Type a message... (/copy, /clear)"
           autocomplete="off"
           maxlength="500"
         />
@@ -460,6 +461,7 @@
     const messagesEl = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const copyHistoryBtn = document.getElementById('copyHistoryBtn');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
     const CHAT_HISTORY_KEY = 'chatquee.chatHistory';
@@ -527,6 +529,47 @@
       }
     }
 
+    function buildChatTranscript() {
+      return chatHistory
+        .map((message) => {
+          const role = message.type === 'user' ? 'You' : 'Bot';
+          return `[${message.time}] ${role}: ${message.text}`;
+        })
+        .join('\n');
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const tempArea = document.createElement('textarea');
+      tempArea.value = text;
+      tempArea.setAttribute('readonly', '');
+      tempArea.style.position = 'absolute';
+      tempArea.style.left = '-9999px';
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempArea);
+    }
+
+    async function copyChatHistory() {
+      if (chatHistory.length === 0) {
+        renderMessage('Belum ada chat untuk disalin. Kirim pesan dulu ya.', 'bot');
+        return;
+      }
+
+      try {
+        const transcript = buildChatTranscript();
+        await copyTextToClipboard(transcript);
+        renderMessage('Riwayat chat berhasil disalin ke clipboard. ✅', 'bot');
+      } catch (err) {
+        renderMessage('Gagal menyalin chat. Coba lagi ya. ❌', 'bot');
+      }
+    }
+
     function setStatus(state) {
       connectionState = state;
       statusDot.className = `status-dot ${state}`;
@@ -540,7 +583,7 @@
       input.disabled = disabled;
       input.placeholder = disabled
         ? (state === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Waiting for connection...')
-        : 'Initiate connection...';
+        : 'Type a message... (/copy, /clear)';
     }
 
     setStatus('reconnecting');
@@ -587,6 +630,19 @@
     function sendMessage() {
       const text = input.value.trim();
       if (!text || connectionState !== 'online') return;
+
+      if (text.toLowerCase() === '/clear' || text.toLowerCase() === '!clear') {
+        input.value = '';
+        clearChatHistory();
+        return;
+      }
+
+      if (text.toLowerCase() === '/copy' || text.toLowerCase() === '!copy') {
+        input.value = '';
+        copyChatHistory();
+        return;
+      }
+
       appendMessage(text, 'user');
       input.value = '';
       sendBtn.disabled = true;
@@ -601,6 +657,7 @@
     }
 
     sendBtn.addEventListener('click', sendMessage);
+    copyHistoryBtn.addEventListener('click', copyChatHistory);
     clearHistoryBtn.addEventListener('click', clearChatHistory);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
