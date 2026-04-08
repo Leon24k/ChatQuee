@@ -27,6 +27,7 @@ const helpMessage = [
   '- Salam: halo, hello, hi',
   '- Nama bot: nama, name',
   '- Waktu: waktu, time, jam',
+  '- Kalkulator: hitung 5+5, calc 10/2',
   '- Cuaca: cuaca, weather',
   '- Sopan santun: terima kasih, thank you, thanks',
   '- Percakapan: apa kabar, how are you, bye, sampai jumpa',
@@ -62,6 +63,22 @@ function getBotReply(message) {
     const now = new Date();
     return `Sekarang pukul ${now.toLocaleTimeString('id-ID')}.
 (The current time is ${now.toLocaleTimeString('en-US')}).`;
+  }
+
+  if (lower.startsWith('hitung ') || lower.startsWith('calc ')) {
+    const expr = lower.replace(/^(hitung|calc)\s+/i, '').trim();
+    // Validate to allow only math-safe characters
+    if (/^[0-9+\-*/().\s]+$/.test(expr)) {
+      try {
+        const result = new Function(`return ${expr}`)();
+        if (Number.isFinite(result)) {
+          return `Hasil dari perhitungan: ${expr} = ${result}`;
+        }
+      } catch {
+        // Fall back to the default handler on syntax error
+      }
+    }
+    return 'Maaf, saya hanya bisa menghitung angka dengan operator dasar (+, -, *, /). Formatnya: "hitung 5+5"';
   }
 
   for (const [key, response] of Object.entries(botResponses)) {

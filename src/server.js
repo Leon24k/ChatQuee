@@ -2,6 +2,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
 
 const { getBotReply, isValidUserMessage } = require('./bot');
 const { PORT, RESPONSE_DELAY_MS } = require('./config');
@@ -9,6 +11,12 @@ const { PORT, RESPONSE_DELAY_MS } = require('./config');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Security and performance middleware
+app.use(helmet({
+  contentSecurityPolicy: false // disabled to allow inline GSAP scripts and CDNs
+}));
+app.use(compression());
 
 app.use(express.static(path.join(__dirname, '../public')));
 

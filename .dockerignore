@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+.env
+.git
+.vscode
+tests
+jest.config.js
+eslint.config.cjs

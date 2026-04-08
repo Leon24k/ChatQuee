@@ -11,6 +11,15 @@ describe('bot logic', () => {
     expect(r).toMatch(/current time/i);
   });
 
+  test('handles math calculations', () => {
+    expect(getBotReply('hitung 5+5')).toContain('10');
+    expect(getBotReply('calc 100/4')).toContain('25');
+    // invalid chars
+    expect(getBotReply('hitung 5a+5')).toContain('Maaf, saya hanya bisa menghitung angka');
+    // syntax error
+    expect(getBotReply('calc 5++')).toContain('Maaf, saya hanya bisa menghitung angka');
+  });
+
   test('returns fallback on unknown', () => {
     expect(getBotReply('qwerty')).toContain("Maaf, saya belum mengerti");
   });
