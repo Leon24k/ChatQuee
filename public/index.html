@@ -278,6 +278,33 @@
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: all; }
+    .modal-content {
+      background: rgba(24, 24, 27, 0.9); border: 1px solid rgba(255,255,255,0.1);
+      padding: 40px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+      transform: translateY(30px) scale(0.95); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
+    .modal-content input {
+      width: 100%; margin: 30px 0 20px; padding: 14px 18px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; border-radius: 12px; font-size: 1rem; outline: none; transition: all 0.2s;
+    }
+    .modal-content input:focus { border-color: var(--accent1); box-shadow: 0 0 15px rgba(99,102,241,0.3); }
+    .modal-content button {
+      width: 100%; background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: #fff; padding: 14px; border: none; border-radius: 12px;
+      font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .modal-content button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99,102,241,0.4); }
+
     @media (max-width: 768px) {
       .showcase-container { flex-direction: column; }
       .showcase-left { height: 200px; text-align: center; }
@@ -290,6 +317,15 @@
 </head>
 <body>
   <div class="cursor-glow"></div>
+
+  <div class="modal-overlay" id="nameModal">
+    <div class="modal-content">
+      <h2>Welcome to <span class="gradient-text">ChatQuee</span></h2>
+      <p style="color: #a1a1aa; margin-top: 10px;">Please enter your name to continue.</p>
+      <input type="text" id="nameInput" placeholder="Your name..." maxlength="20" autocomplete="off" />
+      <button id="saveNameBtn">Start Chatting</button>
+    </div>
+  </div>
 
   <section class="hero">
     <h1>
@@ -464,12 +500,38 @@
     const copyHistoryBtn = document.getElementById('copyHistoryBtn');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
+    const USERNAME_KEY = 'chatquee.username';
     const CHAT_HISTORY_KEY = 'chatquee.chatHistory';
     const WELCOME_MESSAGE = 'Halo! Saya ChatQuee Bot. Ada yang bisa saya bantu? 👋\n(Hello! I\'m ChatQuee Bot. How can I help you?)';
 
+    let currentUsername = localStorage.getItem(USERNAME_KEY) || '';
     let connectionState = 'offline';
     let chatHistory = loadChatHistory();
     let suppressNextWelcome = chatHistory.length > 0;
+
+    const nameModal = document.getElementById('nameModal');
+    const nameInput = document.getElementById('nameInput');
+    const saveNameBtn = document.getElementById('saveNameBtn');
+
+    if (!currentUsername) {
+      nameModal.classList.add('active');
+    }
+
+    function saveUsernameAndStart() {
+      const val = nameInput.value.trim();
+      if (val) {
+        currentUsername = val;
+        localStorage.setItem(USERNAME_KEY, val);
+        nameModal.classList.remove('active');
+        setStatus(connectionState);
+        input.focus();
+      }
+    }
+
+    saveNameBtn.addEventListener('click', saveUsernameAndStart);
+    nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') saveUsernameAndStart();
+    });
 
     function loadChatHistory() {
       try {
@@ -532,7 +594,7 @@
     function buildChatTranscript() {
       return chatHistory
         .map((message) => {
-          const role = message.type === 'user' ? 'You' : 'Bot';
+          const role = message.type === 'user' ? (currentUsername || 'You') : 'Bot';
           return `[${message.time}] ${role}: ${message.text}`;
         })
         .join('\n');
@@ -581,9 +643,11 @@
       const disabled = state !== 'online';
       sendBtn.disabled = disabled;
       input.disabled = disabled;
+      
+      const placeholderName = currentUsername ? ` as ${currentUsername}` : '';
       input.placeholder = disabled
         ? (state === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Waiting for connection...')
-        : 'Type a message... (/copy, /clear)';
+        : `Type a message${placeholderName}... (/copy, /clear)`;
     }
 
     setStatus('reconnecting');
