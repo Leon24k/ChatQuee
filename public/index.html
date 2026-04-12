@@ -234,9 +234,21 @@
     @keyframes msgPop { from { opacity: 0; transform: scale(0.9) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
     .message.bot  { background: rgba(255,255,255,0.07); border-bottom-left-radius: 6px; align-self: flex-start; color: #e4e4e7; }
     .message.user { background: linear-gradient(135deg, var(--accent1), var(--accent2)); border-bottom-right-radius: 6px; align-self: flex-end; color: #fff; font-weight: 500; }
+    .msg-text { word-wrap: break-word; }
+    .msg-text strong { font-weight: 700; color: #fff; }
+    .msg-text em { font-style: italic; opacity: 0.9; }
+    .msg-text code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+    .msg-footer { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
     .msg-time { font-size: 0.7rem; opacity: 0.5; line-height: 1; }
-    .message.bot  .msg-time { align-self: flex-start; }
-    .message.user .msg-time { align-self: flex-end; }
+    .msg-copy-btn { 
+      background: none; border: none; color: inherit; opacity: 0; 
+      cursor: pointer; font-size: 0.8rem; transition: opacity 0.2s, transform 0.2s;
+      padding: 2px;
+    }
+    .message:hover .msg-copy-btn { opacity: 0.5; }
+    .msg-copy-btn:hover { opacity: 1 !important; transform: scale(1.1); }
+    .message.bot  .msg-footer { align-self: flex-start; }
+    .message.user .msg-footer { align-self: flex-end; flex-direction: row-reverse; }
     .typing span { display: inline-block; width: 6px; height: 6px; background: #a1a1aa; border-radius: 50%; margin: 0 3px; animation: bounce 1s infinite alternate; }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
@@ -551,19 +563,61 @@
       return time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return unsafe
+           .replace(/&/g, "&amp;")
+           .replace(/</g, "&lt;")
+           .replace(/>/g, "&gt;")
+           .replace(/"/g, "&quot;")
+           .replace(/'/g, "&#039;");
+    }
+
+    function parseMarkdown(text) {
+      let html = escapeHtml(text);
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      html = html.replace(/\n/g, '<br>');
+      return html;
+    }
+
     function renderMessage(text, type, time, persist = false) {
+      if (text === null || text === undefined) return;
       const div = document.createElement('div');
       div.classList.add('message', type);
 
-      const textSpan = document.createElement('span');
-      textSpan.textContent = text;
+      const textDiv = document.createElement('div');
+      textDiv.classList.add('msg-text');
+      textDiv.innerHTML = parseMarkdown(text);
+
+      const footerDiv = document.createElement('div');
+      footerDiv.classList.add('msg-footer');
 
       const timeSpan = document.createElement('span');
       timeSpan.classList.add('msg-time');
       timeSpan.textContent = getMessageTime(time);
 
-      div.appendChild(textSpan);
-      div.appendChild(timeSpan);
+      const copyBtn = document.createElement('button');
+      copyBtn.classList.add('msg-copy-btn');
+      copyBtn.innerHTML = '📋';
+      copyBtn.title = 'Copy message';
+      copyBtn.onclick = async () => {
+        try {
+          await copyTextToClipboard(text);
+          copyBtn.innerHTML = '✅';
+          setTimeout(() => copyBtn.innerHTML = '📋', 2000);
+        } catch (e) {
+          copyBtn.innerHTML = '❌';
+          setTimeout(() => copyBtn.innerHTML = '📋', 2000);
+        }
+      };
+
+      footerDiv.appendChild(timeSpan);
+      footerDiv.appendChild(copyBtn);
+
+      div.appendChild(textDiv);
+      div.appendChild(footerDiv);
       messagesEl.appendChild(div);
 
       if (persist) {
