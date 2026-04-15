@@ -405,6 +405,7 @@
           </div>
         </div>
         <div class="chat-actions">
+          <button class="clear-history-btn" id="exportHistoryBtn" type="button">Export txt</button>
           <button class="clear-history-btn" id="copyHistoryBtn" type="button">Copy chat</button>
           <button class="clear-history-btn" id="clearHistoryBtn" type="button">Clear chat</button>
         </div>
@@ -416,7 +417,7 @@
         <input
           type="text"
           id="messageInput"
-          placeholder="Type a message... (/copy, /clear)"
+          placeholder="Type a message... (/copy, /clear, /export)"
           autocomplete="off"
           maxlength="500"
         />
@@ -509,6 +510,7 @@
     const messagesEl = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const exportHistoryBtn = document.getElementById('exportHistoryBtn');
     const copyHistoryBtn = document.getElementById('copyHistoryBtn');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
@@ -686,6 +688,29 @@
       }
     }
 
+    function exportChatHistory() {
+      if (chatHistory.length === 0) {
+        renderMessage('Belum ada chat yang bisa diekspor. Kirim pesan dulu ya.', 'bot');
+        return;
+      }
+      try {
+        const transcript = buildChatTranscript();
+        const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const datestr = new Date().toISOString().slice(0, 10);
+        a.download = `chatquee-transcript-${datestr}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        renderMessage('Transkrip chat berhasil diunduh! 📄✅', 'bot');
+      } catch (err) {
+        renderMessage('Gagal mengekspor chat. Silakan coba lagi. ❌', 'bot');
+      }
+    }
+
     function setStatus(state) {
       connectionState = state;
       statusDot.className = `status-dot ${state}`;
@@ -701,7 +726,7 @@
       const placeholderName = currentUsername ? ` as ${currentUsername}` : '';
       input.placeholder = disabled
         ? (state === 'reconnecting' ? 'Reconnecting...' : 'Disconnected. Waiting for connection...')
-        : `Type a message${placeholderName}... (/copy, /clear)`;
+        : `Type a message${placeholderName}... (/copy, /clear, /export)`;
     }
 
     setStatus('reconnecting');
@@ -761,6 +786,12 @@
         return;
       }
 
+      if (text.toLowerCase() === '/export' || text.toLowerCase() === '!export') {
+        input.value = '';
+        exportChatHistory();
+        return;
+      }
+
       appendMessage(text, 'user');
       input.value = '';
       sendBtn.disabled = true;
@@ -775,6 +806,7 @@
     }
 
     sendBtn.addEventListener('click', sendMessage);
+    exportHistoryBtn.addEventListener('click', exportChatHistory);
     copyHistoryBtn.addEventListener('click', copyChatHistory);
     clearHistoryBtn.addEventListener('click', clearChatHistory);
     input.addEventListener('keydown', (e) => {
