@@ -249,6 +249,9 @@
     .msg-copy-btn:hover { opacity: 1 !important; transform: scale(1.1); }
     .message.bot  .msg-footer { align-self: flex-start; }
     .message.user .msg-footer { align-self: flex-end; flex-direction: row-reverse; }
+    .typing { gap: 8px; }
+    .typing-content { display: flex; align-items: center; gap: 8px; }
+    .typing-label { font-size: 0.82rem; color: #cbd5e1; opacity: 0.85; }
     .typing span { display: inline-block; width: 6px; height: 6px; background: #a1a1aa; border-radius: 50%; margin: 0 3px; animation: bounce 1s infinite alternate; }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
@@ -780,23 +783,77 @@
 
     function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
+    function createTypingPlan(text) {
+      const normalized = text.toLowerCase();
+      if (normalized.startsWith('/help') || normalized.startsWith('!help')) {
+        return {
+          stages: [
+            { delay: 1200, label: 'Bot sedang menyiapkan bantuan...' },
+            { delay: 2600, label: 'Masih merapikan daftar perintah...' },
+          ],
+        };
+      }
+
+      if (normalized.startsWith('hitung ') || normalized.startsWith('calc ')) {
+        return {
+          stages: [
+            { delay: 900, label: 'Bot sedang menghitung...' },
+            { delay: 1800, label: 'Sedikit lagi, hasilnya hampir siap...' },
+          ],
+        };
+      }
+
+      if (text.length > 80) {
+        return {
+          stages: [
+            { delay: 1200, label: 'Bot sedang membaca pesan panjang...' },
+            { delay: 2600, label: 'Masih memproses detail pesanmu...' },
+          ],
+        };
+      }
+
+      return {
+        stages: [
+          { delay: 1100, label: 'Bot sedang mengetik...' },
+          { delay: 2300, label: 'Masih merespons...' },
+        ],
+      };
+    }
+
     function appendMessage(text, type) {
       renderMessage(text, type, null, true);
       playBeep(type === 'user' ? 'send' : 'receive');
     }
 
-    function showTyping() {
+    function showTyping(text) {
       const div = document.createElement('div');
       div.classList.add('typing', 'message', 'bot');
       div.id = 'typing-indicator';
-      div.innerHTML = '<span></span><span></span><span></span>';
+      div.innerHTML = '<div class="typing-content"><span></span><span></span><span></span></div><div class="typing-label">Bot sedang mengetik...</div>';
       messagesEl.appendChild(div);
       scrollToBottom();
+
+      const label = div.querySelector('.typing-label');
+      const plan = createTypingPlan(text);
+      const timers = [];
+
+      plan.stages.forEach((stage) => {
+        timers.push(setTimeout(() => {
+          if (label && document.getElementById('typing-indicator') === div) {
+            label.textContent = stage.label;
+          }
+        }, stage.delay));
+      });
+
+      div.dataset.timers = JSON.stringify(timers);
     }
 
     function removeTyping() {
       const el = document.getElementById('typing-indicator');
-      if (el) el.remove();
+      if (!el) return;
+      const timerIds = JSON.parse(el.dataset.timers || '[]');
+      timerIds.forEach((id) => clearTimeout(id));
+      el.remove();
     }
 
     socket.on('bot message', (msg) => {
@@ -834,7 +891,7 @@
       appendMessage(text, 'user');
       input.value = '';
       sendBtn.disabled = true;
-      showTyping();
+      showTyping(text);
       socket.emit('user message', text);
       setTimeout(() => {
         if (connectionState === 'online') {
