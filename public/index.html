@@ -262,6 +262,21 @@
       border-top: 1px solid rgba(255,255,255,0.05);
       display: flex; gap: 12px;
     }
+    .input-hint {
+      padding: 0 20px 18px;
+      color: #a1a1aa;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+    }
+    .input-hint span {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      padding: 5px 10px;
+    }
     #messageInput {
       flex: 1; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
@@ -425,6 +440,13 @@
           maxlength="500"
         />
         <button id="sendBtn" title="Send">→</button>
+      </div>
+      <div class="input-hint" aria-label="Keyboard shortcuts">
+        <span>Enter: send</span>
+        <span>Ctrl/⌘ + Enter: send</span>
+        <span>Ctrl/⌘ + Shift + C: copy chat</span>
+        <span>Ctrl/⌘ + Shift + E: export txt</span>
+        <span>Ctrl/⌘ + Shift + L: clear chat</span>
       </div>
     </div>
   </section>
@@ -901,11 +923,44 @@
       }, 500);
     }
 
+    function handleKeyboardShortcut(e) {
+      const isMod = e.ctrlKey || e.metaKey;
+      if (!isMod) return false;
+
+      const key = e.key.toLowerCase();
+      if (key === 'enter') {
+        e.preventDefault();
+        sendMessage();
+        return true;
+      }
+
+      if (e.shiftKey && key === 'c') {
+        e.preventDefault();
+        copyChatHistory();
+        return true;
+      }
+
+      if (e.shiftKey && key === 'e') {
+        e.preventDefault();
+        exportChatHistory();
+        return true;
+      }
+
+      if (e.shiftKey && key === 'l') {
+        e.preventDefault();
+        clearChatHistory();
+        return true;
+      }
+
+      return false;
+    }
+
     sendBtn.addEventListener('click', sendMessage);
     exportHistoryBtn.addEventListener('click', exportChatHistory);
     copyHistoryBtn.addEventListener('click', copyChatHistory);
     clearHistoryBtn.addEventListener('click', clearChatHistory);
     input.addEventListener('keydown', (e) => {
+      if (handleKeyboardShortcut(e)) return;
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
   </script>
