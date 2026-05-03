@@ -252,6 +252,13 @@
     .typing { gap: 8px; }
     .typing-content { display: flex; align-items: center; gap: 8px; }
     .typing-label { font-size: 0.82rem; color: #cbd5e1; opacity: 0.85; }
+    .msg-text.is-streaming::after {
+      content: '▍';
+      margin-left: 2px;
+      color: #94a3b8;
+      animation: streamCaret 0.9s step-end infinite;
+    }
+    @keyframes streamCaret { 50% { opacity: 0; } }
     .typing span { display: inline-block; width: 6px; height: 6px; background: #a1a1aa; border-radius: 50%; margin: 0 3px; animation: bounce 1s infinite alternate; }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
@@ -693,6 +700,77 @@
       scrollToBottom();
     }
 
+    function renderStreamingBotMessage(text) {
+      if (text === null || text === undefined) return;
+
+      const div = document.createElement('div');
+      div.classList.add('message', 'bot');
+
+      const textDiv = document.createElement('div');
+      textDiv.classList.add('msg-text', 'is-streaming');
+
+      const footerDiv = document.createElement('div');
+      footerDiv.classList.add('msg-footer');
+
+      const timeSpan = document.createElement('span');
+      timeSpan.classList.add('msg-time');
+      timeSpan.textContent = getMessageTime();
+
+      const copyBtn = document.createElement('button');
+      copyBtn.classList.add('msg-copy-btn');
+      copyBtn.innerHTML = '📋';
+      copyBtn.title = 'Copy message';
+      copyBtn.disabled = true;
+
+      footerDiv.appendChild(timeSpan);
+      footerDiv.appendChild(copyBtn);
+      div.appendChild(textDiv);
+      div.appendChild(footerDiv);
+      messagesEl.appendChild(div);
+
+      const chunks = String(text).split(/(\n|(?<=[.!?])\s+)/);
+      const revealChunks = chunks.filter(Boolean);
+      let renderedText = '';
+      let cursor = 0;
+
+      function finishRender() {
+        textDiv.innerHTML = parseMarkdown(text);
+        textDiv.classList.remove('is-streaming');
+        copyBtn.disabled = false;
+        copyBtn.onclick = async () => {
+          try {
+            await copyTextToClipboard(text);
+            copyBtn.innerHTML = '✅';
+            setTimeout(() => { copyBtn.innerHTML = '📋'; }, 2000);
+          } catch (error) {
+            copyBtn.innerHTML = '❌';
+            setTimeout(() => { copyBtn.innerHTML = '📋'; }, 2000);
+          }
+        };
+        chatHistory.push({ text, type: 'bot', time: timeSpan.textContent });
+        saveChatHistory();
+        scrollToBottom();
+      }
+
+      function step() {
+        if (cursor >= revealChunks.length) {
+          finishRender();
+          return;
+        }
+
+        renderedText += revealChunks[cursor];
+        textDiv.innerHTML = parseMarkdown(renderedText);
+        scrollToBottom();
+
+        const chunk = revealChunks[cursor];
+        cursor += 1;
+        const delay = /\n/.test(chunk) ? 140 : /[.!?]\s*$/.test(chunk) ? 260 : 45;
+        setTimeout(step, delay);
+      }
+
+      step();
+    }
+
     function restoreChatHistory() {
       messagesEl.innerHTML = '';
       chatHistory.forEach((message) => renderMessage(message.text, message.type, message.time));
@@ -885,6 +963,11 @@
         return;
       }
       suppressNextWelcome = false;
+      if (typeof msg === 'string' && (msg.length > 80 || msg.includes('\n'))) {
+        renderStreamingBotMessage(msg);
+        playBeep('receive');
+        return;
+      }
       appendMessage(msg, 'bot');
     });
 
