@@ -284,6 +284,15 @@
       border-radius: 999px;
       padding: 5px 10px;
     }
+    /* Command palette styles */
+    .cmd-palette-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 1500; }
+    .cmd-palette-overlay.active { display: flex; }
+    .cmd-palette { width: 560px; max-width: calc(100% - 40px); background: rgba(12,12,14,0.95); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 30px 80px rgba(2,6,23,0.8); border-radius: 12px; padding: 12px; }
+    .cmd-palette input { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: #e6edf3; outline: none; font-size: 0.98rem; }
+    .cmd-list { margin: 8px 0 0; max-height: 260px; overflow: auto; list-style: none; padding: 6px; }
+    .cmd-item { padding: 10px 12px; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; color:#cbd5e1; }
+    .cmd-item:hover, .cmd-item.active { background: rgba(255,255,255,0.02); color:#fff; }
+    .cmd-meta { font-size: 0.82rem; opacity: 0.7; }
     #messageInput {
       flex: 1; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
@@ -454,6 +463,13 @@
         <span>Ctrl/⌘ + Shift + C: copy chat</span>
         <span>Ctrl/⌘ + Shift + E: export txt</span>
         <span>Ctrl/⌘ + Shift + L: clear chat</span>
+      </div>
+      <!-- Command Palette -->
+      <div id="cmdPaletteOverlay" class="cmd-palette-overlay" aria-hidden="true">
+        <div class="cmd-palette" role="dialog" aria-label="Command palette">
+          <input id="cmdSearch" placeholder="Type a command or search... (e.g. export, copy, help)" autocomplete="off" />
+          <ul id="cmdList" class="cmd-list" role="listbox"></ul>
+        </div>
       </div>
     </div>
   </section>
@@ -1045,6 +1061,74 @@
     input.addEventListener('keydown', (e) => {
       if (handleKeyboardShortcut(e)) return;
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    // --- Command palette logic ---
+    const cmdOverlay = document.getElementById('cmdPaletteOverlay');
+    const cmdSearch = document.getElementById('cmdSearch');
+    const cmdList = document.getElementById('cmdList');
+
+    const COMMANDS = [
+      { id: 'copy', label: 'Copy chat to clipboard', meta: 'Ctrl/Cmd+Shift+C', run: () => copyChatHistory() },
+      { id: 'export', label: 'Export chat to .txt', meta: 'Ctrl/Cmd+Shift+E', run: () => exportChatHistory() },
+      { id: 'clear', label: 'Clear chat history', meta: 'Ctrl/Cmd+Shift+L', run: () => clearChatHistory() },
+      { id: 'help', label: 'Show bot help', meta: '/help', run: () => { showTyping('/help'); socket.emit('user message', '/help'); } },
+    ];
+
+    function openCommandPalette(initial = '') {
+      cmdOverlay.classList.add('active');
+      cmdOverlay.setAttribute('aria-hidden', 'false');
+      cmdSearch.value = initial;
+      renderCmdList(initial);
+      setTimeout(() => cmdSearch.focus(), 50);
+    }
+
+    function closeCommandPalette() {
+      cmdOverlay.classList.remove('active');
+      cmdOverlay.setAttribute('aria-hidden', 'true');
+      cmdSearch.blur();
+    }
+
+    function renderCmdList(filter) {
+      const q = (filter || '').trim().toLowerCase();
+      cmdList.innerHTML = '';
+      const items = COMMANDS.filter(c => !q || c.label.toLowerCase().includes(q) || c.id.includes(q));
+      items.forEach((c, i) => {
+        const li = document.createElement('li');
+        li.className = 'cmd-item';
+        li.tabIndex = 0;
+        li.dataset.cmd = c.id;
+        li.innerHTML = `<span>${c.label}</span><span class="cmd-meta">${c.meta}</span>`;
+        li.addEventListener('click', () => { c.run(); closeCommandPalette(); });
+        li.addEventListener('keydown', (e) => { if (e.key === 'Enter') { c.run(); closeCommandPalette(); } });
+        cmdList.appendChild(li);
+      });
+      // highlight first
+      if (cmdList.firstChild) cmdList.firstChild.classList.add('active');
+    }
+
+    cmdSearch.addEventListener('input', (e) => renderCmdList(e.target.value));
+    cmdSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeCommandPalette(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const next = cmdList.querySelector('.cmd-item.active')?.nextSibling || cmdList.firstChild; setActiveCmd(next); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const prev = cmdList.querySelector('.cmd-item.active')?.previousSibling || cmdList.lastChild; setActiveCmd(prev); }
+      if (e.key === 'Enter') { e.preventDefault(); const active = cmdList.querySelector('.cmd-item.active'); if (active) { const id = active.dataset.cmd; const cmd = COMMANDS.find(c => c.id === id); if (cmd) { cmd.run(); closeCommandPalette(); } } }
+    });
+
+    function setActiveCmd(el) {
+      if (!el) return;
+      cmdList.querySelectorAll('.cmd-item').forEach(n => n.classList.remove('active'));
+      el.classList.add('active');
+      el.scrollIntoView({ block: 'nearest' });
+    }
+
+    cmdOverlay.addEventListener('click', (e) => { if (e.target === cmdOverlay) closeCommandPalette(); });
+
+    // Global shortcut: Ctrl/Cmd+K to open command palette
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault(); openCommandPalette();
+      }
     });
   </script>
 </body>
