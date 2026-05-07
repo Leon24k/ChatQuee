@@ -1129,16 +1129,59 @@
       cmdSearch.blur();
     }
 
+    function highlightMatch(label, q) {
+      if (!q) return label;
+      const low = label.toLowerCase();
+      const idx = low.indexOf(q);
+      if (idx >= 0) {
+        const before = escapeHtml(label.slice(0, idx));
+        const match = escapeHtml(label.slice(idx, idx + q.length));
+        const after = escapeHtml(label.slice(idx + q.length));
+        return `${before}<strong>${match}</strong>${after}`;
+      }
+      return escapeHtml(label);
+    }
+
+    function subsequenceScore(text, q) {
+      // score based on how well q appears as subsequence in text
+      let ti = 0;
+      let qi = 0;
+      const t = text.toLowerCase();
+      const s = q.toLowerCase();
+      while (ti < t.length && qi < s.length) {
+        if (t[ti] === s[qi]) qi++;
+        ti++;
+      }
+      if (qi !== s.length) return 0;
+      // score shorter distance higher
+      const density = s.length / t.length;
+      return Math.floor(40 + density * 40);
+    }
+
+    function scoreCommand(c, q) {
+      if (!q) return 50;
+      const id = c.id.toLowerCase();
+      const label = c.label.toLowerCase();
+      const qq = q.toLowerCase();
+      if (id === qq || label === qq) return 200;
+      if (id.startsWith(qq) || label.startsWith(qq)) return 150;
+      if (label.includes(qq) || id.includes(qq)) return 120;
+      return subsequenceScore(c.label, q);
+    }
+
     function renderCmdList(filter) {
-      const q = (filter || '').trim().toLowerCase();
+      const q = (filter || '').trim();
       cmdList.innerHTML = '';
-      const items = COMMANDS.filter(c => !q || c.label.toLowerCase().includes(q) || c.id.includes(q));
-      items.forEach((c, i) => {
+      // score and sort
+      const scored = COMMANDS.map((c) => ({ c, score: scoreCommand(c, q) })).filter(x => x.score > 0);
+      scored.sort((a, b) => b.score - a.score);
+      scored.forEach(({ c }, i) => {
         const li = document.createElement('li');
         li.className = 'cmd-item';
         li.tabIndex = 0;
         li.dataset.cmd = c.id;
-        li.innerHTML = `<span>${c.label}</span><span class="cmd-meta">${c.meta}</span>`;
+        const labelHtml = highlightMatch(c.label, q.toLowerCase());
+        li.innerHTML = `<span>${labelHtml}</span><span class="cmd-meta">${escapeHtml(c.meta)}</span>`;
         li.addEventListener('click', () => { c.run(); closeCommandPalette(); });
         li.addEventListener('keydown', (e) => { if (e.key === 'Enter') { c.run(); closeCommandPalette(); } });
         cmdList.appendChild(li);
