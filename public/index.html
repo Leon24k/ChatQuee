@@ -458,6 +458,7 @@
           </div>
         </div>
         <div class="chat-actions">
+          <button class="clear-history-btn" id="muteBtn" type="button" title="Mute/Unmute">🔊</button>
           <button class="clear-history-btn" id="exportHistoryBtn" type="button">Export txt</button>
           <button class="clear-history-btn" id="copyHistoryBtn" type="button">Copy chat</button>
           <button class="clear-history-btn" id="clearHistoryBtn" type="button">Clear chat</button>
@@ -574,8 +575,24 @@
 
     // --- Audio System ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const SOUND_KEY = 'chatquee.soundMuted';
+    let isMuted = localStorage.getItem(SOUND_KEY) === 'true';
     
+    function applyMuteState() {
+      if (!muteBtn) return;
+      muteBtn.textContent = isMuted ? '🔇' : '🔊';
+      muteBtn.title = isMuted ? 'Unmute sounds' : 'Mute sounds';
+      localStorage.setItem(SOUND_KEY, isMuted ? 'true' : 'false');
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      applyMuteState();
+      renderMessage(isMuted ? 'Suara dimatikan.' : 'Suara diaktifkan.', 'bot', null, true);
+    }
+
     function playBeep(type) {
+      if (isMuted) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -615,6 +632,7 @@
     const messagesEl = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
+    const muteBtn = document.getElementById('muteBtn');
     const exportHistoryBtn = document.getElementById('exportHistoryBtn');
     const copyHistoryBtn = document.getElementById('copyHistoryBtn');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
@@ -635,6 +653,9 @@
     if (!currentUsername) {
       nameModal.classList.add('active');
     }
+
+    // Initialize mute button state if present
+    try { if (typeof applyMuteState === 'function') applyMuteState(); } catch (e) { /* ignore */ }
 
     function saveUsernameAndStart() {
       const val = nameInput.value.trim();
@@ -1168,10 +1189,19 @@
     // Add theme command to COMMANDS
     COMMANDS.unshift({ id: 'theme', label: 'Toggle Light/Dark Theme', meta: 'Ctrl/Cmd+K then type theme', run: () => toggleTheme() });
 
+    // Add sound mute command to COMMANDS
+    COMMANDS.unshift({ id: 'sound', label: 'Toggle Sound (mute/unmute)', meta: 'Ctrl/Cmd+M', run: () => { toggleMute(); } });
+
     // Keyboard shortcut to toggle theme quickly: Ctrl/Cmd+T
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't') {
         e.preventDefault(); toggleTheme();
+      }
+    });
+    // Keyboard shortcut to toggle sound quickly: Ctrl/Cmd+M
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+        e.preventDefault(); toggleMute();
       }
     });
   </script>
