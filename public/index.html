@@ -36,7 +36,13 @@
       color: var(--text);
       overflow-x: hidden;
       line-height: 1.6;
+      transition: background-color 0.35s ease, color 0.35s ease;
     }
+
+    /* Smooth transitions for theme-aware elements */
+    input, button, textarea, select { transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease; }
+    .message, .chat-container { transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease; }
+    .status-dot { transition: background 0.35s ease, box-shadow 0.35s ease; }
 
     ::selection { background: var(--accent1); color: #fff; }
 
@@ -298,7 +304,7 @@
     /* Command palette styles */
     .cmd-palette-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 1500; }
     .cmd-palette-overlay.active { display: flex; }
-    .cmd-palette { width: 560px; max-width: calc(100% - 40px); background: rgba(12,12,14,0.95); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 30px 80px rgba(2,6,23,0.8); border-radius: 12px; padding: 12px; }
+    .cmd-palette { width: 560px; max-width: calc(100% - 40px); background: rgba(12,12,14,0.95); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 30px 80px rgba(2,6,23,0.8); border-radius: 12px; padding: 12px; transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease; }
     .cmd-palette input { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: #e6edf3; outline: none; font-size: 0.98rem; }
     .cmd-list { margin: 8px 0 0; max-height: 260px; overflow: auto; list-style: none; padding: 6px; }
     .cmd-item { padding: 10px 12px; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; color:#cbd5e1; }
@@ -307,18 +313,20 @@
     #messageInput {
       flex: 1; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
-      padding: 14px 24px; color: #fff; font-size: 1rem;
-      outline: none; transition: all 0.3s ease;
+      padding: 14px 24px; color: var(--text); font-size: 1rem;
+      outline: none; transition: all 0.35s ease;
     }
     #messageInput:focus { border-color: var(--accent1); background: rgba(255,255,255,0.08); }
     #sendBtn {
       width: 52px; height: 52px; border-radius: 50%; border: none;
       background: #fff; color: #050505; font-size: 1.2rem;
-      cursor: pointer; transition: transform 0.2s, background 0.2s;
+      cursor: pointer; transition: transform 0.2s, background 0.35s ease, color 0.35s ease;
       display: flex; align-items: center; justify-content: center;
     }
     #sendBtn:hover { transform: scale(1.08); background: #e4e4e7; }
     #sendBtn:disabled { opacity: 0.4; pointer-events: none; }
+    body.light #sendBtn { background: #0f172a; color: #f8fafc; }
+    body.light #sendBtn:hover { background: #1e293b; }
 
     .status-dot {
       width: 10px; height: 10px; border-radius: 50%;
