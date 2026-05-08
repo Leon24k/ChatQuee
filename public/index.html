@@ -331,6 +331,7 @@
     .cmd-item:hover, .cmd-item.active { background: rgba(255,255,255,0.02); color:#fff; transform: translateX(3px); }
     .cmd-meta { font-size: 0.82rem; opacity: 0.7; }
     .cmd-item strong { color: #fff; }
+    .cmd-hit { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
     #messageInput {
       flex: 1; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
@@ -1150,58 +1151,80 @@
       cmdSearch.blur();
     }
 
-    function highlightMatch(label, q) {
-      if (!q) return label;
-      const low = label.toLowerCase();
-      const idx = low.indexOf(q);
-      if (idx >= 0) {
-        const before = escapeHtml(label.slice(0, idx));
-        const match = escapeHtml(label.slice(idx, idx + q.length));
-        const after = escapeHtml(label.slice(idx + q.length));
-        return `${before}<strong>${match}</strong>${after}`;
+    function fuzzyMatch(text, query) {
+      const normalizedText = text.toLowerCase();
+      const normalizedQuery = query.toLowerCase();
+      if (!normalizedQuery) {
+        return { score: 50, matches: [] };
       }
-      return escapeHtml(label);
+
+      const exactIndex = normalizedText.indexOf(normalizedQuery);
+      if (exactIndex >= 0) {
+        return {
+          score: 220 - exactIndex * 2,
+          matches: Array.from({ length: normalizedQuery.length }, (_, i) => exactIndex + i),
+        };
+      }
+
+      let textIndex = 0;
+      let queryIndex = 0;
+      const matches = [];
+      while (textIndex < normalizedText.length && queryIndex < normalizedQuery.length) {
+        if (normalizedText[textIndex] === normalizedQuery[queryIndex]) {
+          matches.push(textIndex);
+          queryIndex += 1;
+        }
+        textIndex += 1;
+      }
+
+      if (queryIndex !== normalizedQuery.length) {
+        return { score: 0, matches: [] };
+      }
+
+      const spread = matches[matches.length - 1] - matches[0] + 1;
+      const compactness = normalizedQuery.length / spread;
+      const prefixBoost = normalizedText.startsWith(normalizedQuery) ? 40 : 0;
+      const score = Math.round(80 + compactness * 80 + prefixBoost);
+      return { score, matches };
     }
 
-    function subsequenceScore(text, q) {
-      // score based on how well q appears as subsequence in text
-      let ti = 0;
-      let qi = 0;
-      const t = text.toLowerCase();
-      const s = q.toLowerCase();
-      while (ti < t.length && qi < s.length) {
-        if (t[ti] === s[qi]) qi++;
-        ti++;
+    function scoreCommand(command, q) {
+      if (!q) return { score: 50, matches: [] };
+
+      const labelResult = fuzzyMatch(command.label, q);
+      const idResult = fuzzyMatch(command.id, q);
+
+      if (idResult.score > labelResult.score) {
+        return { score: idResult.score + 15, matches: idResult.matches, source: 'id' };
       }
-      if (qi !== s.length) return 0;
-      // score shorter distance higher
-      const density = s.length / t.length;
-      return Math.floor(40 + density * 40);
+
+      return { score: labelResult.score, matches: labelResult.matches, source: 'label' };
     }
 
-    function scoreCommand(c, q) {
-      if (!q) return 50;
-      const id = c.id.toLowerCase();
-      const label = c.label.toLowerCase();
-      const qq = q.toLowerCase();
-      if (id === qq || label === qq) return 200;
-      if (id.startsWith(qq) || label.startsWith(qq)) return 150;
-      if (label.includes(qq) || id.includes(qq)) return 120;
-      return subsequenceScore(c.label, q);
+    function renderFuzzyLabel(label, matches) {
+      if (!matches || matches.length === 0) {
+        return escapeHtml(label);
+      }
+
+      const matchSet = new Set(matches);
+      return Array.from(label).map((char, index) => {
+        const safeChar = escapeHtml(char);
+        return matchSet.has(index) ? `<span class="cmd-hit">${safeChar}</span>` : safeChar;
+      }).join('');
     }
 
     function renderCmdList(filter) {
       const q = (filter || '').trim();
       cmdList.innerHTML = '';
       // score and sort
-      const scored = COMMANDS.map((c) => ({ c, score: scoreCommand(c, q) })).filter(x => x.score > 0);
+      const scored = COMMANDS.map((c) => ({ c, ...scoreCommand(c, q) })).filter((x) => x.score > 0);
       scored.sort((a, b) => b.score - a.score);
-      scored.forEach(({ c }, i) => {
+      scored.forEach(({ c, matches }) => {
         const li = document.createElement('li');
         li.className = 'cmd-item';
         li.tabIndex = 0;
         li.dataset.cmd = c.id;
-        const labelHtml = highlightMatch(c.label, q.toLowerCase());
+        const labelHtml = renderFuzzyLabel(c.label, matches);
         li.innerHTML = `<span>${labelHtml}</span><span class="cmd-meta">${escapeHtml(c.meta)}</span>`;
         li.addEventListener('click', () => { c.run(); closeCommandPalette(); });
         li.addEventListener('keydown', (e) => { if (e.key === 'Enter') { c.run(); closeCommandPalette(); } });
