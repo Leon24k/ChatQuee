@@ -302,14 +302,35 @@
       padding: 5px 10px;
     }
     /* Command palette styles */
-    .cmd-palette-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 1500; }
-    .cmd-palette-overlay.active { display: flex; }
-    .cmd-palette { width: 560px; max-width: calc(100% - 40px); background: rgba(12,12,14,0.95); border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 30px 80px rgba(2,6,23,0.8); border-radius: 12px; padding: 12px; transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease; }
+    .cmd-palette-overlay {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 1500;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      background: rgba(2, 6, 23, 0.35);
+      backdrop-filter: blur(0px);
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s, backdrop-filter 0.22s ease;
+    }
+    .cmd-palette-overlay.active {
+      opacity: 1; visibility: visible; pointer-events: auto;
+      backdrop-filter: blur(10px);
+      transition: opacity 0.22s ease, visibility 0s linear 0s, backdrop-filter 0.22s ease;
+    }
+    .cmd-palette {
+      width: 560px; max-width: calc(100% - 40px); background: rgba(12,12,14,0.95); border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 30px 80px rgba(2,6,23,0.8); border-radius: 12px; padding: 12px;
+      transform: translateY(14px) scale(0.98); opacity: 0;
+      transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.22s ease, background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+    }
+    .cmd-palette-overlay.active .cmd-palette { transform: translateY(0) scale(1); opacity: 1; }
     .cmd-palette input { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color: #e6edf3; outline: none; font-size: 0.98rem; }
     .cmd-list { margin: 8px 0 0; max-height: 260px; overflow: auto; list-style: none; padding: 6px; }
-    .cmd-item { padding: 10px 12px; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; color:#cbd5e1; }
-    .cmd-item:hover, .cmd-item.active { background: rgba(255,255,255,0.02); color:#fff; }
+    .cmd-item {
+      padding: 10px 12px; border-radius: 8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; color:#cbd5e1;
+      transform: translateX(0);
+      transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .cmd-item:hover, .cmd-item.active { background: rgba(255,255,255,0.02); color:#fff; transform: translateX(3px); }
     .cmd-meta { font-size: 0.82rem; opacity: 0.7; }
+    .cmd-item strong { color: #fff; }
     #messageInput {
       flex: 1; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
