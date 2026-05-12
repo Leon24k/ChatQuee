@@ -332,6 +332,38 @@
     .cmd-meta { font-size: 0.82rem; opacity: 0.7; }
     .cmd-item strong { color: #fff; }
     .cmd-hit { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+
+    /* Message search panel styles */
+    .msg-search-overlay {
+      position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; z-index: 1400;
+      opacity: 0; visibility: hidden; pointer-events: none;
+      background: rgba(2, 6, 23, 0.25);
+      backdrop-filter: blur(0px);
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s, backdrop-filter 0.22s ease;
+      padding-top: 80px;
+    }
+    .msg-search-overlay.active {
+      opacity: 1; visibility: visible; pointer-events: auto;
+      backdrop-filter: blur(8px);
+      transition: opacity 0.22s ease, visibility 0s linear 0s, backdrop-filter 0.22s ease;
+    }
+    .msg-search-panel {
+      width: 500px; max-width: calc(100% - 40px); background: rgba(12,12,14,0.92); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 14px; box-shadow: 0 20px 60px rgba(2,6,23,0.6);
+      transform: translateY(-20px) scale(0.95); opacity: 0;
+      transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.22s ease;
+    }
+    .msg-search-overlay.active .msg-search-panel { transform: translateY(0) scale(1); opacity: 1; }
+    .msg-search-panel input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.02); color: #e6edf3; outline: none; font-size: 0.95rem; }
+    .msg-search-results { margin: 8px 0 0; max-height: 320px; overflow-y: auto; list-style: none; padding: 6px; }
+    .msg-search-item {
+      padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; color: #cbd5e1;
+      background: transparent; border-left: 2px solid transparent; font-size: 0.9rem; line-height: 1.4;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    .msg-search-item:hover, .msg-search-item.active { background: rgba(255,255,255,0.03); border-left-color: var(--accent1); transform: translateX(2px); }
+    .msg-search-highlight { background: rgba(99, 102, 241, 0.4); color: #fff; font-weight: 600; }
     #messageInput {
       flex: 1; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
@@ -511,6 +543,14 @@
         <div class="cmd-palette" role="dialog" aria-label="Command palette">
           <input id="cmdSearch" placeholder="Type a command or search... (e.g. export, copy, help)" autocomplete="off" />
           <ul id="cmdList" class="cmd-list" role="listbox"></ul>
+        </div>
+      </div>
+
+      <!-- Message Search Panel -->
+      <div id="msgSearchOverlay" class="msg-search-overlay" aria-hidden="true">
+        <div class="msg-search-panel" role="dialog" aria-label="Search chat messages">
+          <input id="msgSearchInput" placeholder="Search chat history... (Ctrl/Cmd+F)" autocomplete="off" />
+          <ul id="msgSearchResults" class="msg-search-results" role="listbox"></ul>
         </div>
       </div>
     </div>
@@ -1121,6 +1161,8 @@
     copyHistoryBtn.addEventListener('click', copyChatHistory);
     clearHistoryBtn.addEventListener('click', clearChatHistory);
     input.addEventListener('keydown', (e) => {
+      // Don't send if we're focused on search or command palette
+      if (e.target.id === 'msgSearchInput' || e.target.id === 'cmdSearch') return;
       if (handleKeyboardShortcut(e)) return;
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
@@ -1291,6 +1333,83 @@
         e.preventDefault(); toggleMute();
       }
     });
+
+    // --- Message search logic ---
+    const msgSearchOverlay = document.getElementById('msgSearchOverlay');
+    const msgSearchInput = document.getElementById('msgSearchInput');
+    const msgSearchResults = document.getElementById('msgSearchResults');
+
+    function openMessageSearch() {
+      msgSearchOverlay.classList.add('active');
+      msgSearchOverlay.setAttribute('aria-hidden', 'false');
+      msgSearchInput.value = '';
+      renderSearchResults('');
+      setTimeout(() => msgSearchInput.focus(), 50);
+    }
+
+    function closeMessageSearch() {
+      msgSearchOverlay.classList.remove('active');
+      msgSearchOverlay.setAttribute('aria-hidden', 'true');
+      msgSearchInput.blur();
+    }
+
+    function renderSearchResults(query) {
+      const q = query.trim().toLowerCase();
+      msgSearchResults.innerHTML = '';
+
+      if (!q) {
+        msgSearchResults.innerHTML = '<li style="padding: 10px; color: #71717a; font-size: 0.85rem;">Type to search chat history...</li>';
+        return;
+      }
+
+      const matches = chatHistory.filter(msg => msg.text.toLowerCase().includes(q)).slice(-50);
+
+      if (matches.length === 0) {
+        msgSearchResults.innerHTML = '<li style="padding: 10px; color: #71717a; font-size: 0.85rem;">No messages found.</li>';
+        return;
+      }
+
+      matches.forEach((msg, i) => {
+        const li = document.createElement('li');
+        li.className = 'msg-search-item';
+        li.tabIndex = 0;
+        li.dataset.index = i;
+        const role = msg.type === 'user' ? (currentUsername || 'You') : 'Bot';
+        const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        const highlightedText = msg.text.replace(regex, '<span class="msg-search-highlight">$1</span>');  
+        li.innerHTML = `<div style="font-size: 0.8rem; color: #71717a; margin-bottom: 2px;">${role} · ${msg.time}</div><div>${highlightedText}</div>`;
+        li.addEventListener('click', () => { closeMessageSearch(); messagesEl.scrollTop = messagesEl.scrollHeight; });
+        msgSearchResults.appendChild(li);
+      });
+
+      if (msgSearchResults.firstChild) msgSearchResults.firstChild.classList.add('active');
+    }
+
+    msgSearchInput.addEventListener('input', (e) => renderSearchResults(e.target.value));
+    msgSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closeMessageSearch(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const next = msgSearchResults.querySelector('.msg-search-item.active')?.nextSibling || msgSearchResults.firstChild; setSearchActive(next); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const prev = msgSearchResults.querySelector('.msg-search-item.active')?.previousSibling || msgSearchResults.lastChild; setSearchActive(prev); }
+    });
+
+    function setSearchActive(el) {
+      if (!el || el.nodeType !== 1) return;
+      msgSearchResults.querySelectorAll('.msg-search-item').forEach(n => n.classList.remove('active'));
+      el.classList.add('active');
+      el.scrollIntoView({ block: 'nearest' });
+    }
+
+    msgSearchOverlay.addEventListener('click', (e) => { if (e.target === msgSearchOverlay) closeMessageSearch(); });
+
+    // Keyboard shortcut: Ctrl/Cmd+F to open message search
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault(); openMessageSearch();
+      }
+    });
+
+    // Add search command to palette
+    COMMANDS.push({ id: 'search', label: 'Search chat messages', meta: 'Ctrl/Cmd+F', run: () => { openMessageSearch(); } });
   </script>
 </body>
 </html>
