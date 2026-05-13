@@ -2,6 +2,8 @@
 
 Simple chat application built with Node.js, Express and Socket.IO. It now includes a scrollable landing page with 3D GSAP animations, hero section, feature descriptions and creator info before the chat interface.
 
+It now also uses Showdown + DOMPurify in the browser to render chat markdown safely with richer formatting support.
+
 ## Getting started
 
 ```bash

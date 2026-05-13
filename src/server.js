@@ -18,6 +18,9 @@ app.use(helmet({
 }));
 app.use(compression());
 
+app.use('/vendor/showdown', express.static(path.join(__dirname, '../node_modules/showdown/dist')));
+app.use('/vendor/dompurify', express.static(path.join(__dirname, '../node_modules/dompurify/dist')));
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 // handle incoming socket connections
