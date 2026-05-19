@@ -984,6 +984,30 @@
       }
     }
 
+    async function analyzeChatWithSidecar() {
+      if (chatHistory.length === 0) {
+        renderMessage('Tidak ada chat untuk dianalisis. Kirim pesan dulu ya.', 'bot');
+        return;
+      }
+      try {
+        const res = await fetch('http://localhost:8081/analyze', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(chatHistory)
+        });
+        if (!res.ok) throw new Error('bad response');
+        const json = await res.json();
+        const parts = [];
+        parts.push(`Analisis: ${json.total_messages} pesan (user: ${json.user_messages}, bot: ${json.bot_messages})`);
+        if (json.top_words && json.top_words.length) {
+          const top = json.top_words.map(o => `${Object.keys(o)[0]}(${Object.values(o)[0]})`).join(', ');
+          parts.push(`Kata terbanyak: ${top}`);
+        }
+        renderMessage(parts.join('\n'), 'bot');
+      } catch (err) {
+        renderMessage('Gagal menghubungi layanan analisis. Pastikan sidecar berjalan di localhost:8081', 'bot');
+      }
+    }
+
     function setStatus(state) {
       connectionState = state;
       statusDot.className = `status-dot ${state}`;
@@ -1422,8 +1446,30 @@
       }
     });
 
+    // Call the Go sidecar analyzer (frontend)
+    async function callAnalyze() {
+      if (!chatHistory || chatHistory.length === 0) {
+        renderMessage('Belum ada chat untuk dianalisis.', 'bot');
+        return;
+      }
+      renderMessage('Mengirim riwayat chat ke analyzer lokal...', 'bot');
+      try {
+        const res = await fetch('http://localhost:8081/analyze', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chatHistory })
+        });
+        if (!res.ok) throw new Error('Analyzer tidak merespon');
+        const data = await res.json();
+        const summary = `Analisis: ${data.totalMessages} pesan — user: ${data.userMessages}, bot: ${data.botMessages} — rata-rata panjang: ${Number(data.avgMessageLength).toFixed(1)} karakter. Kata teratas: ${data.topWords.join(', ')}`;
+        renderMessage(summary, 'bot');
+      } catch (err) {
+        renderMessage('Gagal memanggil analyzer: ' + (err.message || err), 'bot');
+      }
+    }
+
     // Add search command to palette
     COMMANDS.push({ id: 'search', label: 'Search chat messages', meta: 'Ctrl/Cmd+F', run: () => { openMessageSearch(); } });
+    COMMANDS.push({ id: 'analyze', label: 'Analyze chat (sidecar)', meta: 'Local:8081', run: () => { callAnalyze(); } });
   </script>
 </body>
 </html>
