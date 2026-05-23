@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    image: chatquee-web:local
+    ports:
+      - "3000:3000"
+    depends_on:
+      - analyzer
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
+  analyzer:
+    build:
+      context: ./services/go_sidecar
+    image: chatquee-analyzer:local
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/analyze" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3

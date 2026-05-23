@@ -16,6 +16,15 @@ Request format: POST `/analyze` with JSON body:
 ```
 
 Response: JSON summary with top words, counts and average length.
+ 
+Docker (recommended for local dev):
+
+```bash
+# from repo root
+docker compose up --build
+```
+
+This will start the Node app on port `3000` and the Go sidecar on port `8081`.
 Go sidecar for ChatQuee
 ======================
 
