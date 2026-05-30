@@ -17,6 +17,8 @@ services:
     image: chatquee-analyzer:local
     ports:
       - "8081:8081"
+    environment:
+      - ANALYZER_TOKEN=dev-token-please-change
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/analyze" ]

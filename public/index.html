@@ -1454,9 +1454,11 @@
       }
       renderMessage('Mengirim riwayat chat ke analyzer lokal...', 'bot');
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        const saved = localStorage.getItem('chatquee.analyzerToken');
+        if (saved) headers['Authorization'] = `Bearer ${saved}`;
         const res = await fetch('http://localhost:8081/analyze', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatHistory })
+          method: 'POST', headers, body: JSON.stringify({ chatHistory })
         });
         if (!res.ok) throw new Error('Analyzer tidak merespon');
         const data = await res.json();
@@ -1467,9 +1469,24 @@
       }
     }
 
+    // Command to set analyzer token in localStorage
+    function promptAnalyzerToken() {
+      const current = localStorage.getItem('chatquee.analyzerToken') || '';
+      const t = prompt('Analyzer token (leave empty to clear):', current);
+      if (t === null) return; // cancelled
+      if (t.trim() === '') {
+        localStorage.removeItem('chatquee.analyzerToken');
+        renderMessage('Analyzer token cleared.', 'bot');
+      } else {
+        localStorage.setItem('chatquee.analyzerToken', t.trim());
+        renderMessage('Analyzer token set (stored locally).', 'bot');
+      }
+    }
+
     // Add search command to palette
     COMMANDS.push({ id: 'search', label: 'Search chat messages', meta: 'Ctrl/Cmd+F', run: () => { openMessageSearch(); } });
     COMMANDS.push({ id: 'analyze', label: 'Analyze chat (sidecar)', meta: 'Local:8081', run: () => { callAnalyze(); } });
+    COMMANDS.push({ id: 'analyzer-token', label: 'Set Analyzer Token', meta: 'localStorage', run: () => { promptAnalyzerToken(); } });
   </script>
 </body>
 </html>

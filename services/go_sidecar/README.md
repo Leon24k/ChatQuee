@@ -25,6 +25,12 @@ docker compose up --build
 ```
 
 This will start the Node app on port `3000` and the Go sidecar on port `8081`.
+
+Authentication (optional):
+
+Set the `ANALYZER_TOKEN` environment variable in the analyzer service to require a Bearer token for requests. When set, the analyzer will respond with HTTP 401 unless requests include header `Authorization: Bearer <token>`.
+
+In local development you can set the token in `docker-compose.yml` (the compose file included with this repo sets a default dev token). The frontend provides a command to set the analyzer token locally (stored in `localStorage`) before calling the analyzer.
 Go sidecar for ChatQuee
 ======================
 

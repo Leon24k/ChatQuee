@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "log"
     "net/http"
+    "os"
     "regexp"
     "sort"
     "strings"
@@ -37,6 +38,17 @@ var stopWords = map[string]struct{}{
 func analyzeHandler(w http.ResponseWriter, r *http.Request) {
     start := time.Now()
     w.Header().Set("Content-Type", "application/json")
+
+    // If a token is configured, require Authorization: Bearer <token>
+    token := os.Getenv("ANALYZER_TOKEN")
+    if token != "" {
+        auth := r.Header.Get("Authorization")
+        if auth == "" || !strings.HasPrefix(auth, "Bearer ") || strings.TrimPrefix(auth, "Bearer ") != token {
+            w.WriteHeader(http.StatusUnauthorized)
+            json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+            return
+        }
+    }
 
     var req AnalyzeReq
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
