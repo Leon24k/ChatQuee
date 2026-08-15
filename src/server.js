@@ -6,7 +6,9 @@ const helmet = require('helmet');
 const compression = require('compression');
 
 const { getBotReply, isValidUserMessage } = require('./bot');
-const { PORT, RESPONSE_DELAY_MS } = require('./config');
+const { PORT, RESPONSE_DELAY_MS, NODE_ENV } = require('./config');
+const logger = require('./logger');
+const { analyzeMessage, healthCheck } = require('./analyzer');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,9 +25,42 @@ app.use('/vendor/dompurify', express.static(path.join(__dirname, '../node_module
 
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const analyzerHealthy = await healthCheck();
+    const status = analyzerHealthy ? 200 : 503;
+    res.status(status).json({
+      status: analyzerHealthy ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      analyzer: analyzerHealthy ? 'connected' : 'disconnected',
+    });
+  } catch (err) {
+    logger.error('Health check failed', { error: err.message });
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found' });
+});
+
+// Global error middleware
+app.use((err, req, res, next) => {
+  logger.error('Unhandled error', {
+    message: err.message,
+    stack: NODE_ENV === 'development' ? err.stack : undefined,
+    path: req.path,
+  });
+  res.status(err.status || 500).json({
+    error: NODE_ENV === 'development' ? err.message : 'Internal Server Error',
+  });
+});
+
 // handle incoming socket connections
 io.on('connection', (socket) => {
-  console.log('client connected', socket.id);
+  logger.info('client connected', { socketId: socket.id });
   socket.emit(
     'bot message',
     'Halo! Saya ChatQuee Bot. Ada yang bisa saya bantu? 👋\n(Hello! I\'m ChatQuee Bot. How can I help you?)'
@@ -33,45 +68,59 @@ io.on('connection', (socket) => {
 
   let lastMessageTime = 0;
 
-  socket.on('user message', (msg) => {
-    const now = Date.now();
-    if (now - lastMessageTime < 1000) {
-      // Rate limit: 1 message per second
-      return socket.emit('bot message', 'Terlalu cepat! Tunggu sebentar sebelum mengirim pesan lagi. ⏳');
-    }
-    lastMessageTime = now;
-
-    if (!isValidUserMessage(msg)) {
-      // ignore invalid payloads
-      return;
-    }
-    const reply = getBotReply(msg);
-    setTimeout(() => {
-      // Ensure socket is still connected to avoid memory leaks or useless emits
-      if (socket.connected) {
-        socket.emit('bot message', reply);
+  socket.on('user message', async (msg) => {
+    try {
+      const now = Date.now();
+      if (now - lastMessageTime < 1000) {
+        // Rate limit: 1 message per second
+        return socket.emit('bot message', 'Terlalu cepat! Tunggu sebentar sebelum mengirim pesan lagi. ⏳');
       }
-    }, RESPONSE_DELAY_MS);
+      lastMessageTime = now;
+
+      if (!isValidUserMessage(msg)) {
+        // ignore invalid payloads
+        logger.debug('Invalid message received', { socketId: socket.id, msgLength: msg?.length });
+        return;
+      }
+
+      // Try to analyze message with Go sidecar
+      const analysisResult = await analyzeMessage(msg);
+      logger.debug('Message processed', { socketId: socket.id, msgLength: msg.length });
+
+      const reply = getBotReply(msg);
+      setTimeout(() => {
+        // Ensure socket is still connected to avoid memory leaks or useless emits
+        if (socket.connected) {
+          socket.emit('bot message', reply);
+        }
+      }, RESPONSE_DELAY_MS);
+    } catch (err) {
+      logger.error('Error processing user message', {
+        socketId: socket.id,
+        error: err.message,
+      });
+      socket.emit('bot message', 'Maaf, terjadi kesalahan. Coba lagi nanti.');
+    }
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('client disconnected', socket.id, reason);
+    logger.info('client disconnected', { socketId: socket.id, reason });
   });
 
   socket.on('error', (err) => {
-    console.error('socket error', socket.id, err);
+    logger.error('socket error', { socketId: socket.id, error: err.message || err });
   });
 });
 
 // graceful shutdown logic
 function shutdown() {
-  console.log('shutting down server...');
+  logger.info('shutting down server...');
   server.close(() => {
-    console.log('HTTP server closed');
+    logger.info('HTTP server closed');
     process.exit(0);
   });
   setTimeout(() => {
-    console.warn('force exit after timeout');
+    logger.warn('force exit after timeout');
     process.exit(1);
   }, 10000).unref();
 }
@@ -79,6 +128,17 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled rejection', { reason: reason?.message || reason });
+});
+
 server.listen(PORT, () => {
-  console.log(`ChatQuee server running at http://localhost:${PORT}`);
+  logger.info(`ChatQuee server running at http://localhost:${PORT}`, { NODE_ENV });
 });
