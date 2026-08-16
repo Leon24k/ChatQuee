@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const helmet = require('helmet');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 
 const { getBotReply, isValidUserMessage } = require('./bot');
 const { PORT, RESPONSE_DELAY_MS, NODE_ENV } = require('./config');
@@ -19,6 +20,18 @@ app.use(helmet({
   contentSecurityPolicy: false // disabled to allow inline GSAP scripts and CDNs
 }));
 app.use(compression());
+
+// Rate limiting middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Terlalu banyak permintaan dari IP ini, coba lagi nanti.',
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+});
+
+// Apply rate limiting to all routes
+app.use(limiter);
 
 app.use('/vendor/showdown', express.static(path.join(__dirname, '../node_modules/showdown/dist')));
 app.use('/vendor/dompurify', express.static(path.join(__dirname, '../node_modules/dompurify/dist')));
@@ -47,7 +60,7 @@ app.use((req, res) => {
 });
 
 // Global error middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   logger.error('Unhandled error', {
     message: err.message,
     stack: NODE_ENV === 'development' ? err.stack : undefined,
@@ -84,7 +97,7 @@ io.on('connection', (socket) => {
       }
 
       // Try to analyze message with Go sidecar
-      const analysisResult = await analyzeMessage(msg);
+      await analyzeMessage(msg);
       logger.debug('Message processed', { socketId: socket.id, msgLength: msg.length });
 
       const reply = getBotReply(msg);
@@ -135,7 +148,7 @@ process.on('uncaughtException', (err) => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   logger.error('Unhandled rejection', { reason: reason?.message || reason });
 });
 
