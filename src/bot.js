@@ -1,6 +1,8 @@
 // bot.js
 // Contains the chatbot logic separate from the server setup.
 
+const math = require('mathjs');
+
 // mapping of trigger words/phrases to canned responses
 const botResponses = {
   halo: 'Halo! Apa yang bisa saya bantu? 😊',
@@ -35,7 +37,11 @@ const helpMessage = [
   '\nKamu juga bisa mengetik `/help` kapan saja untuk melihat daftar ini lagi.'
 ].join('\n');
 
-// determines whether a user-supplied message is acceptable
+/**
+ * Determines whether a user-supplied message is acceptable
+ * @param {*} msg - The message to validate
+ * @returns {boolean} - True if valid, false otherwise
+ */
 function isValidUserMessage(msg) {
   if (typeof msg !== 'string') {
     return false;
@@ -44,14 +50,41 @@ function isValidUserMessage(msg) {
   if (trimmed.length === 0) {
     return false;
   }
-  // arbitrary length cap to avoid abusing the service
+  // Prevent extremely long messages
   if (trimmed.length > 1000) {
+    return false;
+  }
+  // Check for suspicious characters
+  if (/[<>'"&]/g.test(trimmed)) {
     return false;
   }
   return true;
 }
 
-// generate the bot's response for a given message
+/**
+ * Safely evaluate a math expression using mathjs
+ * @param {string} expression - The math expression to evaluate
+ * @returns {number|null} - The result or null if invalid
+ */
+function evaluateMath(expression) {
+  try {
+    // Compile and evaluate safely with mathjs
+    const result = math.evaluate(expression);
+    // Only allow numeric results
+    if (Number.isFinite(result)) {
+      return result;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generates the bot's response for a given message
+ * @param {string} message - The user's message
+ * @returns {string} - The bot's reply
+ */
 function getBotReply(message) {
   const lower = message.toLowerCase().trim();
 
@@ -67,16 +100,9 @@ function getBotReply(message) {
 
   if (lower.startsWith('hitung ') || lower.startsWith('calc ')) {
     const expr = lower.replace(/^(hitung|calc)\s+/i, '').trim();
-    // Validate to allow only math-safe characters
-    if (/^[0-9+\-*/().\s]+$/.test(expr)) {
-      try {
-        const result = new Function(`return ${expr}`)();
-        if (Number.isFinite(result)) {
-          return `Hasil dari perhitungan: ${expr} = ${result}`;
-        }
-      } catch {
-        // Fall back to the default handler on syntax error
-      }
+    const result = evaluateMath(expr);
+    if (result !== null) {
+      return `Hasil dari perhitungan: ${expr} = ${result}`;
     }
     return 'Maaf, saya hanya bisa menghitung angka dengan operator dasar (+, -, *, /). Formatnya: "hitung 5+5"';
   }
@@ -96,4 +122,5 @@ module.exports = {
   helpMessage,
   isValidUserMessage,
   getBotReply,
+  evaluateMath,
 };

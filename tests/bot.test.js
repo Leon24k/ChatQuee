@@ -1,4 +1,4 @@
-const { getBotReply, helpMessage, isValidUserMessage } = require('../src/bot');
+const { getBotReply, helpMessage, isValidUserMessage, evaluateMath } = require('../src/bot');
 
 describe('bot logic', () => {
   test('responds to greeting keywords', () => {
@@ -11,23 +11,32 @@ describe('bot logic', () => {
     expect(r).toMatch(/current time/i);
   });
 
-  test('handles math calculations', () => {
+  test('handles math calculations safely with mathjs', () => {
     expect(getBotReply('hitung 5+5')).toContain('10');
     expect(getBotReply('calc 100/4')).toContain('25');
-    // invalid chars
+    // invalid syntax
     expect(getBotReply('hitung 5a+5')).toContain('Maaf, saya hanya bisa menghitung angka');
     // syntax error
     expect(getBotReply('calc 5++')).toContain('Maaf, saya hanya bisa menghitung angka');
   });
 
-  test('returns fallback on unknown', () => {
-    expect(getBotReply('qwerty')).toContain("Maaf, saya belum mengerti");
+  test('evaluateMath function works correctly', () => {
+    expect(evaluateMath('2 + 2')).toBe(4);
+    expect(evaluateMath('10 * 5')).toBe(50);
+    expect(evaluateMath('100 / 4')).toBe(25);
+    expect(evaluateMath('invalid')).toBeNull();
   });
 
-  test('validates messages', () => {
+  test('returns fallback on unknown', () => {
+    expect(getBotReply('qwerty')).toContain('Maaf, saya belum mengerti');
+  });
+
+  test('validates messages with XSS prevention', () => {
     expect(isValidUserMessage(null)).toBeFalsy();
     expect(isValidUserMessage('   ')).toBeFalsy();
     expect(isValidUserMessage('hi')).toBeTruthy();
+    expect(isValidUserMessage('<script>alert(1)</script>')).toBeFalsy();
+    expect(isValidUserMessage('test&query')).toBeFalsy();
     const long = 'x'.repeat(1001);
     expect(isValidUserMessage(long)).toBeFalsy();
   });
