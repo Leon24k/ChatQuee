@@ -1,6 +1,6 @@
 module.exports = [
   {
-    ignores: ['node_modules/**'],
+    ignores: ['node_modules/**', 'dist/**', 'build/**', '.env*'],
   },
   {
     files: ['src/**/*.js', 'tests/**/*.js'],
@@ -14,14 +14,36 @@ module.exports = [
         __dirname: 'readonly',
         console: 'readonly',
         setTimeout: 'readonly',
+        setInterval: 'readonly',
       },
     },
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Best Practices
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-unreachable': 'error',
+      'no-duplicate-case': 'error',
+      'no-fallthrough': 'error',
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      'no-return-assign': 'error',
+      'no-self-compare': 'error',
+      'no-throw-literal': 'error',
+      'no-with': 'error',
+      'block-scoped-var': 'error',
+      
+      // Code Style
       eqeqeq: ['warn', 'always'],
       curly: ['warn', 'all'],
       semi: ['warn', 'always'],
+      'no-multi-spaces': 'warn',
+      'indent': ['warn', 2],
+      'quotes': ['warn', 'single', { avoidEscape: true }],
+      
+      // Security
+      'no-var': 'warn',
+      'prefer-const': 'warn',
     },
   },
   {
@@ -31,6 +53,8 @@ module.exports = [
         describe: 'readonly',
         test: 'readonly',
         expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
       },
     },
   },
