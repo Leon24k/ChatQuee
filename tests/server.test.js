@@ -236,3 +236,40 @@ describe('Logger utility', () => {
     }).not.toThrow();
   });
 });
+
+describe('Analyzer integration contract', () => {
+  test('Node analyzer sends the Go sidecar-compatible chatHistory payload', async () => {
+    const express = require('express');
+    const { analyzeMessage } = require('../src/analyzer');
+
+    const app = express();
+    app.use(express.json());
+
+    app.post('/analyze', (req, res) => {
+      expect(req.headers.authorization).toContain('Bearer');
+      expect(req.body).toHaveProperty('chatHistory');
+      expect(Array.isArray(req.body.chatHistory)).toBe(true);
+      expect(req.body.chatHistory[0]).toMatchObject({
+        text: 'hello there',
+        type: 'user',
+      });
+      expect(req.body.chatHistory[0].time).toBeTruthy();
+      res.json({ ok: true, totalMessages: 1 });
+    });
+
+    const server = app.listen(0);
+    const { port } = server.address();
+
+    const config = require('../src/config');
+    const originalUrl = config.ANALYZER_SERVICE_URL;
+    config.ANALYZER_SERVICE_URL = `http://localhost:${port}`;
+
+    try {
+      const result = await analyzeMessage('hello there');
+      expect(result).toMatchObject({ ok: true, totalMessages: 1 });
+    } finally {
+      config.ANALYZER_SERVICE_URL = originalUrl;
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+});
