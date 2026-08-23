@@ -11,6 +11,18 @@ function getAnalyzerConfig() {
   };
 }
 
+function normalizeChatHistory(input) {
+  if (Array.isArray(input)) {
+    return input;
+  }
+
+  return [{
+    text: String(input || '').trim(),
+    type: 'user',
+    time: new Date().toISOString(),
+  }];
+}
+
 /**
  * Call the analyzer service to process a user message
  * @param {string} message - The user's message
@@ -21,13 +33,7 @@ async function analyzeMessage(message) {
 
   try {
     const payload = {
-      chatHistory: [
-        {
-          text: String(message || '').trim(),
-          type: 'user',
-          time: new Date().toISOString(),
-        },
-      ],
+      chatHistory: normalizeChatHistory(message),
     };
 
     const response = await fetch(`${ANALYZER_SERVICE_URL}/analyze`, {

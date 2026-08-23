@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   web:
     build: .
@@ -6,9 +5,12 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - analyzer
+      analyzer:
+        condition: service_healthy
     environment:
       - NODE_ENV=development
+      - ANALYZER_SERVICE_URL=http://analyzer:8081
+      - ANALYZER_TOKEN=${ANALYZER_TOKEN:-dev-token-please-change}
     restart: unless-stopped
 
   analyzer:
@@ -18,10 +20,10 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - ANALYZER_TOKEN=dev-token-please-change
+      - ANALYZER_TOKEN=${ANALYZER_TOKEN:-dev-token-please-change}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/analyze" ]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8081/health" ]
       interval: 10s
       timeout: 3s
       retries: 3

@@ -32,6 +32,24 @@ const limiter = rateLimit({
 
 // Apply rate limiting to all routes
 app.use(limiter);
+app.use(express.json({ limit: '256kb' }));
+
+app.post('/api/analyze', async (req, res, next) => {
+  try {
+    const { chatHistory } = req.body || {};
+    if (!Array.isArray(chatHistory) || chatHistory.length === 0 || chatHistory.length > 1000) {
+      return res.status(400).json({ error: 'chatHistory must contain between 1 and 1000 messages' });
+    }
+
+    const result = await analyzeMessage(chatHistory);
+    if (!result) {
+      return res.status(503).json({ error: 'Analyzer service unavailable' });
+    }
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+});
 
 app.use('/vendor/showdown', express.static(path.join(__dirname, '../node_modules/showdown/dist')));
 app.use('/vendor/dompurify', express.static(path.join(__dirname, '../node_modules/dompurify/dist')));
