@@ -9,6 +9,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const ANALYZER_SERVICE_URL = process.env.ANALYZER_SERVICE_URL || 'http://analyzer:8081';
 const ANALYZER_TOKEN = process.env.ANALYZER_TOKEN || 'dev-token-please-change';
+const ANALYZER_TIMEOUT_MS = parseInt(process.env.ANALYZER_TIMEOUT_MS, 10) || 5000;
 
 // Validate required environment variables
 function validateConfig() {
@@ -20,6 +21,10 @@ function validateConfig() {
 
   if (RESPONSE_DELAY_MS < 0) {
     errors.push('RESPONSE_DELAY_MS must be non-negative');
+  }
+
+  if (ANALYZER_TIMEOUT_MS <= 0) {
+    errors.push('ANALYZER_TIMEOUT_MS must be positive');
   }
 
   if (!['development', 'production', 'test'].includes(NODE_ENV)) {
@@ -54,6 +59,7 @@ module.exports = {
   LOG_LEVEL,
   ANALYZER_SERVICE_URL,
   ANALYZER_TOKEN,
+  ANALYZER_TIMEOUT_MS,
   isDevelopment: NODE_ENV === 'development',
   isProduction: NODE_ENV === 'production',
 };

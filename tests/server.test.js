@@ -272,4 +272,31 @@ describe('Analyzer integration contract', () => {
       await new Promise((resolve) => server.close(resolve));
     }
   });
+
+  test('aborts stalled analyzer requests', async () => {
+    const express = require('express');
+    const { analyzeMessage } = require('../src/analyzer');
+    const app = express();
+
+    app.use(express.json());
+    app.post('/analyze', (_req, res) => {
+      setTimeout(() => res.json({ ok: true }), 100);
+    });
+
+    const server = app.listen(0);
+    const { port } = server.address();
+    const config = require('../src/config');
+    const originalUrl = config.ANALYZER_SERVICE_URL;
+    const originalTimeout = config.ANALYZER_TIMEOUT_MS;
+    config.ANALYZER_SERVICE_URL = `http://localhost:${port}`;
+    config.ANALYZER_TIMEOUT_MS = 20;
+
+    try {
+      await expect(analyzeMessage('slow request')).resolves.toBeNull();
+    } finally {
+      config.ANALYZER_SERVICE_URL = originalUrl;
+      config.ANALYZER_TIMEOUT_MS = originalTimeout;
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
 });
