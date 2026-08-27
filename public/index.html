@@ -1416,10 +1416,10 @@
         li.className = 'msg-search-item';
         li.tabIndex = 0;
         li.dataset.index = i;
-        const role = msg.type === 'user' ? (currentUsername || 'You') : 'Bot';
+        const role = escapeHtml(msg.type === 'user' ? (currentUsername || 'You') : 'Bot');
         const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        const highlightedText = msg.text.replace(regex, '<span class="msg-search-highlight">$1</span>');  
-        li.innerHTML = `<div style="font-size: 0.8rem; color: #71717a; margin-bottom: 2px;">${role} · ${msg.time}</div><div>${highlightedText}</div>`;
+        const highlightedText = escapeHtml(msg.text).replace(regex, '<span class="msg-search-highlight">$1</span>');
+        li.innerHTML = `<div style="font-size: 0.8rem; color: #71717a; margin-bottom: 2px;">${role} · ${escapeHtml(msg.time)}</div><div>${highlightedText}</div>`;
         li.addEventListener('click', () => { closeMessageSearch(); messagesEl.scrollTop = messagesEl.scrollHeight; });
         msgSearchResults.appendChild(li);
       });

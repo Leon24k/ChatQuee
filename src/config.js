@@ -8,7 +8,8 @@ const RESPONSE_DELAY_MS = parseInt(process.env.RESPONSE_DELAY_MS, 10) || 400;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const ANALYZER_SERVICE_URL = process.env.ANALYZER_SERVICE_URL || 'http://analyzer:8081';
-const ANALYZER_TOKEN = process.env.ANALYZER_TOKEN || 'dev-token-please-change';
+const DEFAULT_ANALYZER_TOKEN = 'dev-token-please-change';
+const ANALYZER_TOKEN = process.env.ANALYZER_TOKEN || DEFAULT_ANALYZER_TOKEN;
 const ANALYZER_TIMEOUT_MS = parseInt(process.env.ANALYZER_TIMEOUT_MS, 10) || 5000;
 
 // Validate required environment variables
@@ -41,6 +42,10 @@ function validateConfig() {
 
   if (!ANALYZER_TOKEN) {
     errors.push('ANALYZER_TOKEN is required (use .env or environment variables)');
+  }
+
+  if (NODE_ENV === 'production' && ANALYZER_TOKEN === DEFAULT_ANALYZER_TOKEN) {
+    errors.push('ANALYZER_TOKEN must be set to a non-default value in production');
   }
 
   if (errors.length > 0) {
