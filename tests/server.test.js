@@ -299,4 +299,34 @@ describe('Analyzer integration contract', () => {
       await new Promise((resolve) => server.close(resolve));
     }
   });
+
+  test('rejects malformed analytics messages', async () => {
+    const app = express();
+    app.use(express.json());
+    app.post('/api/analyze', (req, res) => {
+      const { chatHistory } = req.body || {};
+      const valid = Array.isArray(chatHistory)
+        && chatHistory.length > 0
+        && chatHistory.length <= 1000
+        && chatHistory.every((message) => (
+          message
+          && typeof message.text === 'string'
+          && message.text.trim().length > 0
+          && message.text.length <= 1000
+          && ['user', 'bot'].includes(String(message.type).toLowerCase())
+        ));
+
+      if (!valid) {
+        return res.status(400).json({ error: 'invalid chat history' });
+      }
+      return res.json({ ok: true });
+    });
+
+    const response = await request(app)
+      .post('/api/analyze')
+      .send({ chatHistory: [{ text: '', type: 'user' }] })
+      .expect(400);
+
+    expect(response.body).toHaveProperty('error', 'invalid chat history');
+  });
 });

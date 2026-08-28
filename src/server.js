@@ -11,6 +11,20 @@ const { PORT, RESPONSE_DELAY_MS, NODE_ENV } = require('./config');
 const logger = require('./logger');
 const { analyzeMessage, healthCheck } = require('./analyzer');
 
+function isValidChatHistory(chatHistory) {
+  return Array.isArray(chatHistory)
+    && chatHistory.length > 0
+    && chatHistory.length <= 1000
+    && chatHistory.every((message) => (
+      message
+      && typeof message === 'object'
+      && typeof message.text === 'string'
+      && message.text.trim().length > 0
+      && message.text.length <= 1000
+      && ['user', 'bot'].includes(String(message.type).toLowerCase())
+    ));
+}
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -37,8 +51,10 @@ app.use(express.json({ limit: '256kb' }));
 app.post('/api/analyze', async (req, res, next) => {
   try {
     const { chatHistory } = req.body || {};
-    if (!Array.isArray(chatHistory) || chatHistory.length === 0 || chatHistory.length > 1000) {
-      return res.status(400).json({ error: 'chatHistory must contain between 1 and 1000 messages' });
+    if (!isValidChatHistory(chatHistory)) {
+      return res.status(400).json({
+        error: 'chatHistory must contain 1 to 1000 valid user or bot messages',
+      });
     }
 
     const result = await analyzeMessage(chatHistory);
