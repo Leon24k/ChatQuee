@@ -86,7 +86,8 @@ function evaluateMath(expression) {
  * @returns {string} - The bot's reply
  */
 function getBotReply(message) {
-  const lower = message.toLowerCase().trim();
+  const text = typeof message === 'string' ? message : '';
+  const lower = text.toLowerCase().trim();
 
   if (lower === '/help' || lower === '!help' || lower === 'help') {
     return helpMessage;

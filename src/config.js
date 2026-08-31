@@ -3,7 +3,8 @@
 
 require('dotenv').config();
 
-const PORT = process.env.PORT || 3000;
+const parsedPort = Number.parseInt(process.env.PORT || '', 10);
+const PORT = Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : 3000;
 const RESPONSE_DELAY_MS = parseInt(process.env.RESPONSE_DELAY_MS, 10) || 400;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';

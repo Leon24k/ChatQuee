@@ -200,6 +200,25 @@ describe('Configuration validation', () => {
     expect(config.PORT).toBeGreaterThan(0);
   });
 
+  test('PORT parses environment values as numbers', () => {
+    const originalPort = process.env.PORT;
+    jest.resetModules();
+    process.env.PORT = '4200';
+
+    try {
+      const config = require('../src/config');
+      expect(config.PORT).toBe(4200);
+      expect(typeof config.PORT).toBe('number');
+    } finally {
+      if (originalPort === undefined) {
+        delete process.env.PORT;
+      } else {
+        process.env.PORT = originalPort;
+      }
+      jest.resetModules();
+    }
+  });
+
   test('LOG_LEVEL is a valid value', () => {
     const config = require('../src/config');
     const validLevels = ['error', 'warn', 'info', 'debug'];

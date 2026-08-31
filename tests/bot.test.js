@@ -31,6 +31,13 @@ describe('bot logic', () => {
     expect(getBotReply('qwerty')).toContain('Maaf, saya belum mengerti');
   });
 
+  test('handles non-string input safely', () => {
+    expect(() => getBotReply(null)).not.toThrow();
+    expect(getBotReply(null)).toContain('Maaf, saya belum mengerti');
+    expect(() => getBotReply(123)).not.toThrow();
+    expect(getBotReply(123)).toContain('Maaf, saya belum mengerti');
+  });
+
   test('validates messages with XSS prevention', () => {
     expect(isValidUserMessage(null)).toBeFalsy();
     expect(isValidUserMessage('   ')).toBeFalsy();
