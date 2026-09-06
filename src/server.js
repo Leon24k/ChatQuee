@@ -114,6 +114,7 @@ io.on('connection', (socket) => {
   );
 
   let lastMessageTime = 0;
+  const pendingReplies = new Set();
 
   socket.on('user message', async (msg) => {
     try {
@@ -135,22 +136,27 @@ io.on('connection', (socket) => {
       logger.debug('Message processed', { socketId: socket.id, msgLength: msg.length });
 
       const reply = getBotReply(msg);
-      setTimeout(() => {
-        // Ensure socket is still connected to avoid memory leaks or useless emits
+      const replyTimer = setTimeout(() => {
+        pendingReplies.delete(replyTimer);
         if (socket.connected) {
           socket.emit('bot message', reply);
         }
       }, RESPONSE_DELAY_MS);
+      pendingReplies.add(replyTimer);
     } catch (err) {
       logger.error('Error processing user message', {
         socketId: socket.id,
         error: err.message,
       });
-      socket.emit('bot message', 'Maaf, terjadi kesalahan. Coba lagi nanti.');
+      if (socket.connected) {
+        socket.emit('bot message', 'Maaf, terjadi kesalahan. Coba lagi nanti.');
+      }
     }
   });
 
   socket.on('disconnect', (reason) => {
+    pendingReplies.forEach((timer) => clearTimeout(timer));
+    pendingReplies.clear();
     logger.info('client disconnected', { socketId: socket.id, reason });
   });
 
