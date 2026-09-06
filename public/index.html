@@ -754,13 +754,14 @@
           && message.text.trim().length > 0
           && message.text.length <= 1000
           && ['user', 'bot'].includes(String(message.type).toLowerCase())
-        ));
+        )).slice(-1000);
       } catch (err) {
         return [];
       }
     }
 
     function saveChatHistory() {
+      chatHistory = chatHistory.slice(-1000);
       localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory));
     }
 
