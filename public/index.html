@@ -746,7 +746,15 @@
       try {
         const raw = localStorage.getItem(CHAT_HISTORY_KEY);
         const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed : [];
+        if (!Array.isArray(parsed)) return [];
+
+        return parsed.filter((message) => (
+          message
+          && typeof message.text === 'string'
+          && message.text.trim().length > 0
+          && message.text.length <= 1000
+          && ['user', 'bot'].includes(String(message.type).toLowerCase())
+        ));
       } catch (err) {
         return [];
       }
